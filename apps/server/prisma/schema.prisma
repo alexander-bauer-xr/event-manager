@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id             String         @id @default(cuid())
+  slug           String         @unique
+  title          String
+  startsAt       DateTime?
+  endsAt         DateTime?
+  adminTokenHash String
+  createdAt      DateTime       @default(now())
+
+  locations      Location[]
+  agendaSlots    AgendaSlot[]
+  state          EventState?
+  announcements  Announcement[]
+  chatRooms      ChatRoom[]
+  chatMessages   ChatMessage[]
+
+  @@index([slug])
+}
+
+model Location {
+  id      String  @id @default(cuid())
+  eventId String
+  title   String
+  lat     Float?
+  lng     Float?
+  address String?
+  note    String?
+
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  agendaSlots  AgendaSlot[]
+
+  @@index([eventId])
+}
+
+model AgendaSlot {
+  id         String    @id @default(cuid())
+  eventId    String
+  title      String
+  startTime  DateTime?
+  endTime    DateTime?
+  locationId String?
+  sortIndex  Int
+
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([eventId, sortIndex])
+}
+
+model EventState {
+  eventId        String   @id
+  currentSlotId  String?
+  updatedAt      DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  eventId   String
+  text      String
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([eventId, createdAt])
+}
+
+model ChatRoom {
+  id          String   @id @default(cuid())
+  eventId     String
+  key         String
+  title       String
+  isAdminOnly Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@unique([eventId, key])
+  @@index([eventId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  eventId   String
+  roomId    String
+  guestId   String
+  guestName String
+  text      String
+  createdAt DateTime @default(now())
+
+  // Editing fields
+  editedAt    DateTime?
+  isEdited    Boolean   @default(false)
+  editHistory Json?
+
+  // Deletion fields
+  deletedAt   DateTime?
+  deletedBy   String?
+  isDeleted   Boolean   @default(false)
+
+  event Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  room  ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([roomId])
+  @@index([roomId, createdAt])
+  @@index([roomId, isDeleted, createdAt])
+}

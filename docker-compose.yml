@@ -1,0 +1,28 @@
+services:
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3001
+      - DATABASE_URL=file:/data/app.db
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_CREATE_KEY=${ADMIN_CREATE_KEY}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - sqlite-data:/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  sqlite-data:

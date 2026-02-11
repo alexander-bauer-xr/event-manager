@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=file:/data/app.db
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_CREATE_KEY=${ADMIN_CREATE_KEY}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - sqlite-data:/data
+    restart: unless-stopped
+
+  # Optional: PostgreSQL for production use
+  # Uncomment and update DATABASE_URL to use Postgres instead of SQLite
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: eventhub
+  #     POSTGRES_PASSWORD: eventhub
+  #     POSTGRES_DB: eventhub
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+
+volumes:
+  sqlite-data:
+  # postgres-data:
