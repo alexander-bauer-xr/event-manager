@@ -18,7 +18,6 @@ import {
   adminLoginResponseSchema,
   eventStateSchema,
   announcementSchema,
-  travelHubSchema,
   notePageSchema,
 } from '../validators';
 
@@ -74,19 +73,15 @@ export async function getSnapshot(slug: string): Promise<SnapshotDTO> {
 }
 
 export async function getTravelHub(slug: string): Promise<TravelHubDTO> {
-  return fetchJson(`/api/events/${slug}/travel`, {}, (data) => travelHubSchema.parse(data));
+  return fetchJson(`/api/events/${slug}/travel`);
 }
 
 export async function getAdminTravelHub(slug: string, jwt: string): Promise<TravelHubDTO> {
-  return fetchJson(
-    `/api/admin/events/${slug}/travel`,
-    {
-      headers: {
-        Authorization: `Bearer ${jwt}`,
-      },
+  return fetchJson(`/api/admin/events/${slug}/travel`, {
+    headers: {
+      Authorization: `Bearer ${jwt}`,
     },
-    (data) => travelHubSchema.parse(data)
-  );
+  });
 }
 
 export async function saveTravelStructure(
@@ -94,17 +89,13 @@ export async function saveTravelStructure(
   jwt: string,
   structure: TravelStructureInput
 ): Promise<TravelHubDTO> {
-  return fetchJson(
-    `/api/admin/events/${slug}/travel`,
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify(structure),
+  return fetchJson(`/api/admin/events/${slug}/travel`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
     },
-    (data) => travelHubSchema.parse(data)
-  );
+    body: JSON.stringify(structure),
+  });
 }
 
 export async function saveNotePage(
