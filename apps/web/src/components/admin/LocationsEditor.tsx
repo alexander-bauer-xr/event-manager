@@ -4,12 +4,22 @@ import toast from 'react-hot-toast';
 import { useStore } from '../../store/useStore';
 
 interface EditableLocation {
+  id: string | null;
   title: string;
   lat: string;
   lng: string;
   address: string;
   note: string;
 }
+
+const emptyLocation = (): EditableLocation => ({
+  id: null,
+  title: '',
+  lat: '',
+  lng: '',
+  address: '',
+  note: '',
+});
 
 export function LocationsEditor() {
   const { slug } = useParams<{ slug: string }>();
@@ -24,6 +34,7 @@ export function LocationsEditor() {
     if (!editing) {
       setEditLocations(
         locations.map((loc) => ({
+          id: loc.id,
           title: loc.title,
           lat: loc.lat?.toString() || '',
           lng: loc.lng?.toString() || '',
@@ -35,7 +46,7 @@ export function LocationsEditor() {
   }, [locations, editing]);
 
   const handleAdd = () => {
-    setEditLocations([...editLocations, { title: '', lat: '', lng: '', address: '', note: '' }]);
+    setEditLocations([...editLocations, emptyLocation()]);
     setEditing(true);
   };
 
@@ -94,6 +105,7 @@ export function LocationsEditor() {
     }
 
     const locationsToSave = editLocations.map((loc) => ({
+      id: loc.id,
       title: loc.title,
       lat: loc.lat ? parseFloat(loc.lat) : null,
       lng: loc.lng ? parseFloat(loc.lng) : null,
@@ -114,6 +126,7 @@ export function LocationsEditor() {
   const handleCancel = () => {
     setEditLocations(
       locations.map((loc) => ({
+        id: loc.id,
         title: loc.title,
         lat: loc.lat?.toString() || '',
         lng: loc.lng?.toString() || '',
@@ -137,7 +150,7 @@ export function LocationsEditor() {
         {editLocations.map((loc, index) => {
           const validation = validateLocation(loc);
           return (
-            <div key={index} className="editor-item">
+            <div key={loc.id ?? `new-${index}`} className="editor-item">
               <div className="editor-item-controls">
                 <button onClick={() => handleRemove(index)} className="btn-icon btn-danger" title="Remove">
                   ✕
