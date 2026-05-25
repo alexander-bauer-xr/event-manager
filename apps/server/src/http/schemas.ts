@@ -47,6 +47,7 @@ export const travelStepPlaceInputSchema = z.object({
 
 export const travelStepInputSchema = z.object({
   id: z.string().nullable().optional(),
+  agendaSlotId: z.string().nullable().optional(),
   title: z.string().min(1).max(200),
   startsAt: z.string().datetime().nullable().optional(),
   endsAt: z.string().datetime().nullable().optional(),
