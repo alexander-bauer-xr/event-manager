@@ -122,7 +122,7 @@ export async function saveAgenda(
 export async function saveLocations(
   slug: string,
   jwt: string,
-  locations: Array<Omit<LocationDTO, 'id'>>
+  locations: LocationDTO[]
 ): Promise<LocationDTO[]> {
   return fetchJson(`/api/admin/events/${slug}/locations`, {
     method: 'PUT',
