@@ -14,6 +14,7 @@ export interface TravelStructureInput {
     summary?: string | null;
     steps?: Array<{
       id?: string | null;
+      agendaSlotId?: string | null;
       title: string;
       startsAt?: Date | null;
       endsAt?: Date | null;
@@ -64,7 +65,7 @@ export class TravelService {
   async getTravelHub(slug: string, includeSensitive = false) {
     const event = await this.getEvent(slug);
 
-    const [stops, places, notes] = await Promise.all([
+    const [stops, places, notes, agenda, state] = await Promise.all([
       prisma.travelStop.findMany({
         where: { eventId: event.id },
         orderBy: { sortIndex: 'asc' },
@@ -72,6 +73,7 @@ export class TravelService {
           steps: {
             orderBy: { sortIndex: 'asc' },
             include: {
+              agendaSlot: true,
               stepPlaces: {
                 orderBy: { sortIndex: 'asc' },
                 include: { place: true },
@@ -91,9 +93,14 @@ export class TravelService {
         },
         orderBy: { updatedAt: 'desc' },
       }),
+      prisma.agendaSlot.findMany({
+        where: { eventId: event.id },
+        orderBy: { sortIndex: 'asc' },
+      }),
+      prisma.eventState.findUnique({ where: { eventId: event.id } }),
     ]);
 
-    return { event, stops, places, notes };
+    return { event, stops, places, notes, agenda, state };
   }
 
   async updateTravelStructure(slug: string, input: TravelStructureInput) {
@@ -101,15 +108,23 @@ export class TravelService {
 
     const existingStops = await prisma.travelStop.findMany({ where: { eventId: event.id }, select: { id: true } });
     const existingPlaces = await prisma.travelPlace.findMany({ where: { eventId: event.id }, select: { id: true } });
+    const agendaSlots = await prisma.agendaSlot.findMany({ where: { eventId: event.id }, select: { id: true } });
 
     const existingStopIds = new Set(existingStops.map((stop) => stop.id));
     const existingPlaceIds = new Set(existingPlaces.map((place) => place.id));
+    const agendaSlotIds = new Set(agendaSlots.map((slot) => slot.id));
     const incomingStopIds = new Set(input.stops.map((stop) => stop.id).filter((id): id is string => Boolean(id)));
     const incomingPlaceIds = new Set(input.places.map((place) => place.id).filter((id): id is string => Boolean(id)));
 
     for (const stop of input.stops) {
       if (stop.id && !existingStopIds.has(stop.id)) {
         throw Errors.VALIDATION_ERROR('Stop id does not belong to this event');
+      }
+
+      for (const step of stop.steps || []) {
+        if (step.agendaSlotId && !agendaSlotIds.has(step.agendaSlotId)) {
+          throw Errors.VALIDATION_ERROR('Agenda slot id does not belong to this event');
+        }
       }
     }
 
@@ -183,6 +198,7 @@ export class TravelService {
           const stepData = {
             eventId: event.id,
             stopId: savedStop.id,
+            agendaSlotId: step.agendaSlotId || null,
             title: step.title,
             startsAt: step.startsAt,
             endsAt: step.endsAt,
