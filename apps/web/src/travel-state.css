@@ -1,0 +1,31 @@
+.travel-current-summary {
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-sm);
+  font-weight: 600;
+}
+
+.travel-step-heading {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.travel-current-badge {
+  align-self: flex-start;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.travel-stop-button.current,
+.travel-step-card.current {
+  border-color: var(--color-primary);
+  background: var(--color-bg-tertiary);
+  box-shadow: var(--shadow-md);
+}
