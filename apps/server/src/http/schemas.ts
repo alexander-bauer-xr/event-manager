@@ -17,9 +17,9 @@ export const announceSchema = z.object({
 
 export const agendaSlotInputSchema = z.object({
   title: z.string().min(1).max(200),
-  startTime: z.string().datetime().optional(),
-  endTime: z.string().datetime().optional(),
-  locationId: z.string().optional(),
+  startTime: z.string().datetime().nullable().optional(),
+  endTime: z.string().datetime().nullable().optional(),
+  locationId: z.string().nullable().optional(),
 });
 
 export const updateAgendaSchema = z.object({
@@ -27,11 +27,12 @@ export const updateAgendaSchema = z.object({
 });
 
 export const locationInputSchema = z.object({
+  id: z.string().nullable().optional(),
   title: z.string().min(1).max(200),
-  lat: z.number().optional(),
-  lng: z.number().optional(),
-  address: z.string().max(500).optional(),
-  note: z.string().max(500).optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
+  address: z.string().max(500).nullable().optional(),
+  note: z.string().max(500).nullable().optional(),
 });
 
 export const updateLocationsSchema = z.object({
