@@ -2,17 +2,24 @@ import {
   SnapshotDTO,
   AdminLoginResponse,
   AgendaSlotDTO,
+  LocationInputDTO,
   LocationDTO,
   EventStateDTO,
   AnnouncementDTO,
   PaginationOptions,
   PaginatedMessagesResult,
+  TravelHubDTO,
+  TravelStructureInput,
+  NotePageDTO,
+  NotePageInput,
 } from '../types';
 import {
   snapshotSchema,
   adminLoginResponseSchema,
   eventStateSchema,
   announcementSchema,
+  travelHubSchema,
+  notePageSchema,
 } from '../validators';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '';
@@ -34,7 +41,6 @@ async function fetchJson<T>(
   validator?: (data: unknown) => T
 ): Promise<T> {
   try {
-    // Only set Content-Type if we're sending a body
     const headers: Record<string, string> = {
       ...options?.headers as Record<string, string>,
     };
@@ -65,6 +71,58 @@ async function fetchJson<T>(
 
 export async function getSnapshot(slug: string): Promise<SnapshotDTO> {
   return fetchJson(`/api/events/${slug}/snapshot`, {}, (data) => snapshotSchema.parse(data));
+}
+
+export async function getTravelHub(slug: string): Promise<TravelHubDTO> {
+  return fetchJson(`/api/events/${slug}/travel`, {}, (data) => travelHubSchema.parse(data));
+}
+
+export async function getAdminTravelHub(slug: string, jwt: string): Promise<TravelHubDTO> {
+  return fetchJson(
+    `/api/admin/events/${slug}/travel`,
+    {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    },
+    (data) => travelHubSchema.parse(data)
+  );
+}
+
+export async function saveTravelStructure(
+  slug: string,
+  jwt: string,
+  structure: TravelStructureInput
+): Promise<TravelHubDTO> {
+  return fetchJson(
+    `/api/admin/events/${slug}/travel`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify(structure),
+    },
+    (data) => travelHubSchema.parse(data)
+  );
+}
+
+export async function saveNotePage(
+  slug: string,
+  jwt: string,
+  note: NotePageInput
+): Promise<NotePageDTO> {
+  return fetchJson(
+    `/api/admin/events/${slug}/notes`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify(note),
+    },
+    (data) => notePageSchema.parse(data)
+  );
 }
 
 export async function adminLogin(slug: string, token: string): Promise<AdminLoginResponse> {
@@ -122,7 +180,7 @@ export async function saveAgenda(
 export async function saveLocations(
   slug: string,
   jwt: string,
-  locations: LocationDTO[]
+  locations: LocationInputDTO[]
 ): Promise<LocationDTO[]> {
   return fetchJson(`/api/admin/events/${slug}/locations`, {
     method: 'PUT',
