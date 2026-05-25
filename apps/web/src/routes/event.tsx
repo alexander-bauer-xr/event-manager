@@ -7,8 +7,9 @@ import { AgendaList } from '../components/AgendaList';
 import { AnnouncementsPanel } from '../components/AnnouncementsPanel';
 import { ChatPanel } from '../components/ChatPanel';
 import { MapPanel } from '../components/MapPanel';
+import { TravelHubPanel } from '../components/TravelHubPanel';
 
-type Tab = 'timeline' | 'announcements' | 'chat' | 'map';
+type Tab = 'timeline' | 'travel' | 'announcements' | 'chat' | 'map';
 
 export function EventPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -26,8 +27,6 @@ export function EventPage() {
   useEffect(() => {
     if (!slug) return;
 
-    // Don't use admin name for regular event access
-    // If user came from admin panel, they should use the admin route
     const savedGuestName = localStorage.getItem(`guestName_${slug}`);
     const guestName = savedGuestName && savedGuestName !== 'Admin' ? savedGuestName : 'Guest';
 
@@ -68,7 +67,7 @@ export function EventPage() {
     );
   }
 
-  if (!event) {
+  if (!event || !slug) {
     return null;
   }
 
@@ -101,6 +100,13 @@ export function EventPage() {
           <span className="tab-label">Timeline</span>
         </button>
         <button
+          className={`tab ${activeTab === 'travel' ? 'active' : ''}`}
+          onClick={() => setActiveTab('travel')}
+        >
+          <span className="tab-icon">🧭</span>
+          <span className="tab-label">Travel Hub</span>
+        </button>
+        <button
           className={`tab ${activeTab === 'announcements' ? 'active' : ''}`}
           onClick={() => setActiveTab('announcements')}
         >
@@ -119,12 +125,13 @@ export function EventPage() {
           onClick={() => setActiveTab('map')}
         >
           <span className="tab-icon">🗺️</span>
-          <span className="tab-label">Map</span>
+          <span className="tab-label">Legacy Map</span>
         </button>
       </nav>
 
       <main className="event-content">
         {activeTab === 'timeline' && <AgendaList />}
+        {activeTab === 'travel' && <TravelHubPanel slug={slug} />}
         {activeTab === 'announcements' && <AnnouncementsPanel />}
         {activeTab === 'chat' && <ChatPanel />}
         {activeTab === 'map' && <MapPanel />}
