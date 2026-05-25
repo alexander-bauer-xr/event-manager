@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { getTravelHub } from '../api/http';
 import { NotePageDTO, TravelHubDTO, TravelPlaceDTO, TravelStopDTO } from '../types';
 import { MarkdownNote } from './MarkdownNote';
+import { TravelRouteLayer } from './TravelRouteLayer';
 
 interface TravelHubPanelProps {
   slug: string;
 }
+
+type TravelHubWithAgenda = TravelHubDTO & {
+  state?: { currentSlotId: string | null; updatedAt: string } | null;
+  agenda?: Array<{ id: string; title: string; startTime: string | null; endTime: string | null; sortIndex: number }>;
+};
+
+type TravelStepWithAgenda = TravelStopDTO['steps'][number] & {
+  agendaSlotId?: string | null;
+};
 
 function formatDateRange(start: string | null, end: string | null) {
   if (!start && !end) return 'No time set';
@@ -24,8 +34,20 @@ function getPosition(item: { lat: number | null; lng: number | null }): [number,
   return [item.lat, item.lng];
 }
 
+function getCurrentTravelStep(hub: TravelHubWithAgenda | null) {
+  const currentSlotId = hub?.state?.currentSlotId;
+  if (!hub || !currentSlotId) return null;
+
+  for (const stop of hub.stops) {
+    const step = stop.steps.find((candidate) => (candidate as TravelStepWithAgenda).agendaSlotId === currentSlotId);
+    if (step) return { stop, step: step as TravelStepWithAgenda };
+  }
+
+  return null;
+}
+
 export function TravelHubPanel({ slug }: TravelHubPanelProps) {
-  const [hub, setHub] = useState<TravelHubDTO | null>(null);
+  const [hub, setHub] = useState<TravelHubWithAgenda | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,12 +57,16 @@ export function TravelHubPanel({ slug }: TravelHubPanelProps) {
     setLoading(true);
     getTravelHub(slug)
       .then((data) => {
-        setHub(data);
-        setSelectedStopId(data.stops[0]?.id ?? null);
+        const nextHub = data as TravelHubWithAgenda;
+        const currentTravelStep = getCurrentTravelStep(nextHub);
+        setHub(nextHub);
+        setSelectedStopId(currentTravelStep?.stop.id ?? nextHub.stops[0]?.id ?? null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load travel hub'))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  const currentTravelStep = useMemo(() => getCurrentTravelStep(hub), [hub]);
 
   const selectedStop = useMemo(() => {
     if (!hub || !selectedStopId) return null;
@@ -58,28 +84,23 @@ export function TravelHubPanel({ slug }: TravelHubPanelProps) {
     return hub.places.filter((place) => place.stopId === selectedStop.id || selectedStop.steps.some((step) => step.stepPlaces.some((stepPlace) => stepPlace.placeId === place.id)));
   }, [hub, selectedStop]);
 
-  const routePositions = useMemo(() => {
-    if (!selectedStop) return [];
-    const positions: [number, number][] = [];
+  const activeRoutePositions = useMemo(() => {
+    const routeSource = currentTravelStep?.stop.id === selectedStop?.id ? currentTravelStep.step.stepPlaces : selectedStop?.steps.flatMap((step) => step.stepPlaces) ?? [];
 
-    selectedStop.steps.forEach((step) => {
-      step.stepPlaces
-        .filter((stepPlace) => stepPlace.routeStop)
-        .forEach((stepPlace) => {
-          const position = getPosition(stepPlace.place);
-          if (position) positions.push(position);
-        });
-    });
-
-    return positions;
-  }, [selectedStop]);
+    return routeSource
+      .filter((stepPlace) => stepPlace.routeStop)
+      .map((stepPlace) => getPosition(stepPlace.place))
+      .filter((position): position is [number, number] => Boolean(position));
+  }, [currentTravelStep, selectedStop]);
 
   const mapCenter = useMemo<[number, number]>(() => {
+    const firstRoutePosition = activeRoutePositions[0];
+    if (firstRoutePosition) return firstRoutePosition;
     const stopPosition = selectedStop ? getPosition(selectedStop) : null;
     if (stopPosition) return stopPosition;
     const firstPlace = visiblePlaces.find((place) => getPosition(place));
     return firstPlace ? getPosition(firstPlace)! : [35.6762, 139.6503];
-  }, [selectedStop, visiblePlaces]);
+  }, [activeRoutePositions, selectedStop, visiblePlaces]);
 
   if (loading) {
     return <div className="travel-empty">Loading travel structure...</div>;
@@ -101,6 +122,11 @@ export function TravelHubPanel({ slug }: TravelHubPanelProps) {
         <div>
           <p className="section-kicker">Travel Hub</p>
           <h2>{hub.event.title}</h2>
+          {currentTravelStep && (
+            <p className="travel-current-summary">
+              Current agenda: {currentTravelStep.stop.title} · {currentTravelStep.step.title}
+            </p>
+          )}
         </div>
         <div className="travel-stats">
           <span>{hub.stops.length} stops</span>
@@ -120,16 +146,20 @@ export function TravelHubPanel({ slug }: TravelHubPanelProps) {
         <aside className="travel-stop-list">
           <h3>Stops</h3>
           {hub.stops.length === 0 && <p className="travel-muted">No stops yet. Add Tokyo, Osaka, Hiroshima...</p>}
-          {hub.stops.map((stop: TravelStopDTO) => (
-            <button
-              key={stop.id}
-              className={`travel-stop-button ${selectedStopId === stop.id ? 'active' : ''}`}
-              onClick={() => setSelectedStopId(stop.id)}
-            >
-              <strong>{stop.title}</strong>
-              <span>{formatDateRange(stop.startsAt, stop.endsAt)}</span>
-            </button>
-          ))}
+          {hub.stops.map((stop: TravelStopDTO) => {
+            const isCurrentStop = currentTravelStep?.stop.id === stop.id;
+            return (
+              <button
+                key={stop.id}
+                className={`travel-stop-button ${selectedStopId === stop.id ? 'active' : ''} ${isCurrentStop ? 'current' : ''}`}
+                onClick={() => setSelectedStopId(stop.id)}
+              >
+                <strong>{stop.title}</strong>
+                <span>{formatDateRange(stop.startsAt, stop.endsAt)}</span>
+                {isCurrentStop && <span className="travel-current-badge">Current</span>}
+              </button>
+            );
+          })}
         </aside>
 
         <div className="travel-main">
@@ -160,7 +190,7 @@ export function TravelHubPanel({ slug }: TravelHubPanelProps) {
                   </Marker>
                 );
               })}
-              {routePositions.length > 1 && <Polyline positions={routePositions} />}
+              <TravelRouteLayer positions={activeRoutePositions} profile="walking" />
             </MapContainer>
           </div>
 
@@ -175,28 +205,34 @@ export function TravelHubPanel({ slug }: TravelHubPanelProps) {
               )}
 
               <div className="travel-step-list">
-                {selectedStop.steps.map((step) => (
-                  <div key={step.id} className="travel-step-card">
-                    <div>
-                      <h3>{step.title}</h3>
-                      <p className="travel-muted">{formatDateRange(step.startsAt, step.endsAt)}</p>
-                      {step.summary && <p>{step.summary}</p>}
-                    </div>
-                    {step.stepPlaces.length > 0 && (
-                      <div className="travel-place-chips">
-                        {step.stepPlaces.map((stepPlace) => (
-                          <button key={stepPlace.id} className="travel-chip" onClick={() => setSelectedPlaceId(stepPlace.placeId)}>
-                            {stepPlace.place.title}
-                            {stepPlace.role && <span>{stepPlace.role}</span>}
-                          </button>
-                        ))}
+                {selectedStop.steps.map((step) => {
+                  const isCurrentStep = currentTravelStep?.step.id === step.id;
+                  return (
+                    <div key={step.id} className={`travel-step-card ${isCurrentStep ? 'current' : ''}`}>
+                      <div>
+                        <div className="travel-step-heading">
+                          <h3>{step.title}</h3>
+                          {isCurrentStep && <span className="travel-current-badge">Current agenda</span>}
+                        </div>
+                        <p className="travel-muted">{formatDateRange(step.startsAt, step.endsAt)}</p>
+                        {step.summary && <p>{step.summary}</p>}
                       </div>
-                    )}
-                    {getNote(hub.notes, 'step', step.id) && (
-                      <MarkdownNote markdown={getNote(hub.notes, 'step', step.id)!.markdown} />
-                    )}
-                  </div>
-                ))}
+                      {step.stepPlaces.length > 0 && (
+                        <div className="travel-place-chips">
+                          {step.stepPlaces.map((stepPlace) => (
+                            <button key={stepPlace.id} className="travel-chip" onClick={() => setSelectedPlaceId(stepPlace.placeId)}>
+                              {stepPlace.place.title}
+                              {stepPlace.role && <span>{stepPlace.role}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {getNote(hub.notes, 'step', step.id) && (
+                        <MarkdownNote markdown={getNote(hub.notes, 'step', step.id)!.markdown} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </article>
           )}
