@@ -23,6 +23,11 @@ model Event {
   chatRooms      ChatRoom[]
   chatMessages   ChatMessage[]
 
+  travelStops    TravelStop[]
+  travelSteps    TravelStep[]
+  travelPlaces   TravelPlace[]
+  notePages      NotePage[]
+
   @@index([slug])
 }
 
@@ -55,6 +60,106 @@ model AgendaSlot {
 
   @@index([eventId])
   @@index([eventId, sortIndex])
+}
+
+model TravelStop {
+  id        String   @id @default(cuid())
+  eventId   String
+  title     String
+  startsAt  DateTime?
+  endsAt    DateTime?
+  sortIndex Int
+  lat       Float?
+  lng       Float?
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event  Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  steps  TravelStep[]
+  places TravelPlace[]
+
+  @@index([eventId])
+  @@index([eventId, sortIndex])
+}
+
+model TravelStep {
+  id        String   @id @default(cuid())
+  eventId   String
+  stopId    String
+  title     String
+  startsAt  DateTime?
+  endsAt    DateTime?
+  sortIndex Int
+  summary   String?
+  routeMode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  stop       TravelStop  @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  stepPlaces StepPlace[]
+
+  @@index([eventId])
+  @@index([stopId, sortIndex])
+}
+
+model TravelPlace {
+  id        String   @id @default(cuid())
+  eventId   String
+  stopId    String?
+  parentId  String?
+  title     String
+  lat       Float?
+  lng       Float?
+  address   String?
+  category  String?
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event      Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  stop       TravelStop?   @relation(fields: [stopId], references: [id], onDelete: SetNull)
+  parent     TravelPlace?  @relation("PlaceTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children   TravelPlace[] @relation("PlaceTree")
+  stepPlaces StepPlace[]
+
+  @@index([eventId])
+  @@index([stopId])
+  @@index([parentId])
+}
+
+model StepPlace {
+  id        String  @id @default(cuid())
+  stepId    String
+  placeId   String
+  role      String?
+  sortIndex Int     @default(0)
+  routeStop Boolean @default(true)
+
+  step  TravelStep  @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  place TravelPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@index([stepId])
+  @@index([placeId])
+  @@unique([stepId, placeId])
+}
+
+model NotePage {
+  id          String   @id @default(cuid())
+  eventId     String
+  ownerType   String
+  ownerId     String
+  title       String
+  markdown    String
+  isSensitive Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([ownerType, ownerId])
 }
 
 model EventState {
