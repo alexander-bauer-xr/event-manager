@@ -54,6 +54,84 @@ export const chatMessageSchema = z.object({
   createdAt: z.string(),
 });
 
+export const travelPlaceSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  stopId: z.string().nullable(),
+  parentId: z.string().nullable(),
+  title: z.string(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  address: z.string().nullable(),
+  category: z.string().nullable(),
+  summary: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const stepPlaceSchema = z.object({
+  id: z.string(),
+  stepId: z.string(),
+  placeId: z.string(),
+  role: z.string().nullable(),
+  sortIndex: z.number(),
+  routeStop: z.boolean(),
+  place: travelPlaceSchema,
+});
+
+export const travelStepSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  stopId: z.string(),
+  title: z.string(),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  sortIndex: z.number(),
+  summary: z.string().nullable(),
+  routeMode: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  stepPlaces: z.array(stepPlaceSchema),
+});
+
+export const travelStopSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  title: z.string(),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  sortIndex: z.number(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  summary: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  steps: z.array(travelStepSchema),
+});
+
+export const notePageSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  ownerType: z.enum(['event', 'stop', 'step', 'place']),
+  ownerId: z.string(),
+  title: z.string(),
+  markdown: z.string(),
+  isSensitive: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const travelHubSchema = z.object({
+  event: z.object({
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+  }),
+  stops: z.array(travelStopSchema),
+  places: z.array(travelPlaceSchema),
+  notes: z.array(notePageSchema),
+});
+
 export const snapshotSchema = z.object({
   event: eventSchema,
   locations: z.array(locationSchema),
