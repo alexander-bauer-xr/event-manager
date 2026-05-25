@@ -57,6 +57,23 @@ export function createSocketServer(httpServer: HttpServer) {
     },
   });
 
+  const activeSlugs = new Set<string>();
+
+  const syncInterval = setInterval(async () => {
+    await Promise.all(
+      Array.from(activeSlugs).map(async (slug) => {
+        try {
+          const result = await eventService.syncEventStateForSlug(slug);
+          if (result.changed) {
+            io.to(eventRoom(slug)).emit(SocketEvents.SERVER_STATE_UPDATE, result.state);
+          }
+        } catch (error) {
+          // Ignore sync errors for deleted/invalid events. They will disappear once users disconnect.
+        }
+      })
+    );
+  }, 15_000);
+
   io.on('connection', (socket) => {
     socket.data.guestId = randomBytes(16).toString('hex');
 
@@ -71,6 +88,7 @@ export function createSocketServer(httpServer: HttpServer) {
 
         socket.data.guestName = guestName;
         socket.data.currentSlug = slug;
+        activeSlugs.add(slug);
 
         const snapshot = await eventService.getSnapshot(slug);
 
@@ -297,8 +315,16 @@ export function createSocketServer(httpServer: HttpServer) {
         // Broadcast updated presence
         const presence = presenceService.getOnlineUsers(socket.data.currentSlug);
         io.to(eventRoom(socket.data.currentSlug)).emit(SocketEvents.SERVER_PRESENCE_UPDATE, presence);
+
+        if (presence.count === 0) {
+          activeSlugs.delete(socket.data.currentSlug);
+        }
       }
     });
+  });
+
+  io.engine.on('close', () => {
+    clearInterval(syncInterval);
   });
 
   return io;
