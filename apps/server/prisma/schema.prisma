@@ -55,8 +55,9 @@ model AgendaSlot {
   locationId String?
   sortIndex  Int
 
-  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  location    Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  travelSteps TravelStep[]
 
   @@index([eventId])
   @@index([eventId, sortIndex])
@@ -84,24 +85,27 @@ model TravelStop {
 }
 
 model TravelStep {
-  id        String   @id @default(cuid())
-  eventId   String
-  stopId    String
-  title     String
-  startsAt  DateTime?
-  endsAt    DateTime?
-  sortIndex Int
-  summary   String?
-  routeMode String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  eventId      String
+  stopId       String
+  agendaSlotId String?
+  title        String
+  startsAt     DateTime?
+  endsAt       DateTime?
+  sortIndex    Int
+  summary      String?
+  routeMode    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
   stop       TravelStop  @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  agendaSlot AgendaSlot? @relation(fields: [agendaSlotId], references: [id], onDelete: SetNull)
   stepPlaces StepPlace[]
 
   @@index([eventId])
   @@index([stopId, sortIndex])
+  @@index([agendaSlotId])
 }
 
 model TravelPlace {
