@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getAdminTravelHub, saveNotePage, saveTravelStructure } from '../../api/http';
-import { NoteOwnerType, TravelHubDTO, TravelStructureInput } from '../../types';
+import { AgendaSlotDTO, NoteOwnerType, TravelHubDTO, TravelStructureInput } from '../../types';
 import { useStore } from '../../store/useStore';
 
 interface TravelStructureEditorProps {
   slug: string;
 }
 
+type TravelHubWithAgenda = TravelHubDTO & { agenda?: AgendaSlotDTO[] };
 type EditablePlace = TravelStructureInput['places'][number];
 type EditableStop = TravelStructureInput['stops'][number];
-type EditableStep = EditableStop['steps'][number];
+type EditableStep = EditableStop['steps'][number] & { agendaSlotId?: string | null };
 
 function toDatetimeLocal(value?: string | null) {
   if (!value) return '';
@@ -40,6 +41,7 @@ function emptyPlace(): EditablePlace {
 function emptyStep(): EditableStep {
   return {
     id: null,
+    agendaSlotId: null,
     title: '',
     startsAt: null,
     endsAt: null,
@@ -62,7 +64,7 @@ function emptyStop(): EditableStop {
   };
 }
 
-function hubToInput(hub: TravelHubDTO): TravelStructureInput {
+function hubToInput(hub: TravelHubWithAgenda): TravelStructureInput {
   return {
     places: hub.places.map((place) => ({
       id: place.id,
@@ -85,6 +87,7 @@ function hubToInput(hub: TravelHubDTO): TravelStructureInput {
       summary: stop.summary,
       steps: stop.steps.map((step) => ({
         id: step.id,
+        agendaSlotId: (step as EditableStep).agendaSlotId ?? null,
         title: step.title,
         startsAt: step.startsAt,
         endsAt: step.endsAt,
@@ -102,7 +105,7 @@ function hubToInput(hub: TravelHubDTO): TravelStructureInput {
 
 export function TravelStructureEditor({ slug }: TravelStructureEditorProps) {
   const jwt = useStore((s) => s.jwt);
-  const [hub, setHub] = useState<TravelHubDTO | null>(null);
+  const [hub, setHub] = useState<TravelHubWithAgenda | null>(null);
   const [draft, setDraft] = useState<TravelStructureInput>({ stops: [], places: [] });
   const [selectedNote, setSelectedNote] = useState<{ ownerType: NoteOwnerType; ownerId: string; title: string; markdown: string; isSensitive: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,14 +115,16 @@ export function TravelStructureEditor({ slug }: TravelStructureEditorProps) {
     if (!jwt) return;
     getAdminTravelHub(slug, jwt)
       .then((data) => {
-        setHub(data);
-        setDraft(hubToInput(data));
+        const nextHub = data as TravelHubWithAgenda;
+        setHub(nextHub);
+        setDraft(hubToInput(nextHub));
       })
       .catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load travel structure'))
       .finally(() => setLoading(false));
   }, [slug, jwt]);
 
   const placeOptions = useMemo(() => draft.places.filter((place) => place.id && place.title.trim()), [draft.places]);
+  const agendaOptions = hub?.agenda ?? [];
 
   const updatePlace = (index: number, updates: Partial<EditablePlace>) => {
     setDraft((current) => ({
@@ -153,8 +158,9 @@ export function TravelStructureEditor({ slug }: TravelStructureEditorProps) {
     setSaving(true);
     try {
       const saved = await saveTravelStructure(slug, jwt, draft);
-      setHub(saved);
-      setDraft(hubToInput(saved));
+      const nextHub = saved as TravelHubWithAgenda;
+      setHub(nextHub);
+      setDraft(hubToInput(nextHub));
       toast.success('Travel structure saved');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save travel structure');
@@ -179,7 +185,7 @@ export function TravelStructureEditor({ slug }: TravelStructureEditorProps) {
     try {
       await saveNotePage(slug, jwt, selectedNote);
       const refreshed = await getAdminTravelHub(slug, jwt);
-      setHub(refreshed);
+      setHub(refreshed as TravelHubWithAgenda);
       toast.success('Note saved');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save note');
@@ -259,6 +265,10 @@ export function TravelStructureEditor({ slug }: TravelStructureEditorProps) {
               {stop.steps.map((step, stepIndex) => (
                 <div className="travel-editor-step" key={step.id ?? `step-${stepIndex}`}>
                   <input className="form-input" value={step.title} onChange={(event) => updateStep(stopIndex, stepIndex, { title: event.target.value })} placeholder="Hotel stay, breakfast, train..." />
+                  <select className="form-select" value={(step as EditableStep).agendaSlotId ?? ''} onChange={(event) => updateStep(stopIndex, stepIndex, { agendaSlotId: event.target.value || null })}>
+                    <option value="">Not connected to agenda</option>
+                    {agendaOptions.map((slot) => <option key={slot.id} value={slot.id}>{slot.title}</option>)}
+                  </select>
                   <div className="travel-editor-row">
                     <input className="form-input" type="datetime-local" value={toDatetimeLocal(step.startsAt)} onChange={(event) => updateStep(stopIndex, stepIndex, { startsAt: fromDatetimeLocal(event.target.value) })} />
                     <input className="form-input" type="datetime-local" value={toDatetimeLocal(step.endsAt)} onChange={(event) => updateStep(stopIndex, stepIndex, { endsAt: fromDatetimeLocal(event.target.value) })} />
