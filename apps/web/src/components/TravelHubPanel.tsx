@@ -85,7 +85,7 @@ export function TravelHubPanel({ slug }: TravelHubPanelProps) {
   }, [hub, selectedStop]);
 
   const activeRoutePositions = useMemo(() => {
-    const routeSource = currentTravelStep?.stop.id === selectedStop?.id ? currentTravelStep.step.stepPlaces : selectedStop?.steps.flatMap((step) => step.stepPlaces) ?? [];
+    const routeSource = (currentTravelStep != null && currentTravelStep.stop.id === selectedStop?.id) ? currentTravelStep.step.stepPlaces : selectedStop?.steps.flatMap((step) => step.stepPlaces) ?? [];
 
     return routeSource
       .filter((stepPlace) => stepPlace.routeStop)

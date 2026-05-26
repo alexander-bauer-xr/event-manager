@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type {
   EventDTO,
   LocationDTO,
+  LocationInputDTO,
   AgendaSlotDTO,
   EventStateDTO,
   ChatRoomDTO,
@@ -79,7 +80,7 @@ interface Store {
   adminAnnounceAction: (slug: string, text: string) => Promise<void>;
   updateEventAction: (slug: string, data: { title?: string; startsAt?: string | null; endsAt?: string | null }) => Promise<void>;
   saveAgendaAction: (slug: string, slots: Array<Omit<AgendaSlotDTO, 'id' | 'sortIndex'>>) => Promise<void>;
-  saveLocationsAction: (slug: string, locations: LocationDTO[]) => Promise<void>;
+  saveLocationsAction: (slug: string, locations: LocationInputDTO[]) => Promise<void>;
   reset: () => void;
 }
 
@@ -596,7 +597,7 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  saveLocationsAction: async (slug: string, locations: LocationDTO[]) => {
+  saveLocationsAction: async (slug: string, locations: LocationInputDTO[]) => {
     const jwt = get().jwt;
     if (!jwt) {
       set({ error: 'store.notAuthenticated' });

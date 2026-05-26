@@ -87,7 +87,7 @@ function hubToInput(hub: TravelHubWithAgenda): TravelStructureInput {
       summary: stop.summary,
       steps: stop.steps.map((step) => ({
         id: step.id,
-        agendaSlotId: (step as EditableStep).agendaSlotId ?? null,
+        agendaSlotId: step.agendaSlotId ?? null,
         title: step.title,
         startsAt: step.startsAt,
         endsAt: step.endsAt,

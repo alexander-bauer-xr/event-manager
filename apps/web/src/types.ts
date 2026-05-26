@@ -88,6 +88,7 @@ export interface TravelStepDTO {
   id: string;
   eventId: string;
   stopId: string;
+  agendaSlotId: string | null;
   title: string;
   startsAt: string | null;
   endsAt: string | null;
