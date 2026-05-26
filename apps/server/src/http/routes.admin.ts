@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { config } from '../config';
 import { authService } from '../domain/auth.service';
 import { eventService } from '../domain/event.service';
+import { travelService } from '../domain/travel.service';
 import { AppError, Errors, toErrorResponse } from '../utils/errors';
 import {
   adminLoginSchema,
@@ -11,6 +12,8 @@ import {
   updateEventSchema,
   updateAgendaSchema,
   updateLocationsSchema,
+  updateTravelStructureSchema,
+  upsertNoteSchema,
 } from './schemas';
 
 async function verifyAdmin(request: FastifyRequest, slug?: string) {
@@ -172,6 +175,73 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       const body = updateLocationsSchema.parse(request.body);
       const locations = await eventService.updateLocations(slug, body.locations);
       return locations;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send(toErrorResponse(Errors.VALIDATION_ERROR(error.message)));
+      }
+      if (error instanceof AppError) {
+        return reply.status(error.httpStatus).send(toErrorResponse(error));
+      }
+      request.log.error(error);
+      return reply.status(500).send(toErrorResponse(error));
+    }
+  });
+
+  app.get('/api/admin/events/:slug/travel', async (request, reply) => {
+    try {
+      const { slug } = request.params as { slug: string };
+      await verifyAdmin(request, slug);
+      return travelService.getTravelHub(slug, true);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return reply.status(error.httpStatus).send(toErrorResponse(error));
+      }
+      request.log.error(error);
+      return reply.status(500).send(toErrorResponse(error));
+    }
+  });
+
+  app.put('/api/admin/events/:slug/travel', async (request, reply) => {
+    try {
+      const { slug } = request.params as { slug: string };
+      await verifyAdmin(request, slug);
+
+      const body = updateTravelStructureSchema.parse(request.body);
+      return travelService.updateTravelStructure(
+        slug,
+        {
+          stops: body.stops.map((stop) => ({
+            ...stop,
+            startsAt: stop.startsAt ? new Date(stop.startsAt) : null,
+            endsAt: stop.endsAt ? new Date(stop.endsAt) : null,
+            steps: stop.steps.map((step) => ({
+              ...step,
+              startsAt: step.startsAt ? new Date(step.startsAt) : null,
+              endsAt: step.endsAt ? new Date(step.endsAt) : null,
+            })),
+          })),
+          places: body.places,
+        }
+      );
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send(toErrorResponse(Errors.VALIDATION_ERROR(error.message)));
+      }
+      if (error instanceof AppError) {
+        return reply.status(error.httpStatus).send(toErrorResponse(error));
+      }
+      request.log.error(error);
+      return reply.status(500).send(toErrorResponse(error));
+    }
+  });
+
+  app.put('/api/admin/events/:slug/notes', async (request, reply) => {
+    try {
+      const { slug } = request.params as { slug: string };
+      await verifyAdmin(request, slug);
+
+      const body = upsertNoteSchema.parse(request.body);
+      return travelService.upsertNote(slug, body);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send(toErrorResponse(Errors.VALIDATION_ERROR(error.message)));

@@ -34,6 +34,7 @@ export const updateAgendaSchema = z.object({
 });
 
 export const locationInputSchema = z.object({
+  id: z.string().nullable().optional(),
   title: z.string().min(1).max(200),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
@@ -45,11 +46,63 @@ export const updateLocationsSchema = z.object({
   locations: z.array(locationInputSchema),
 });
 
+export const travelStepPlaceInputSchema = z.object({
+  placeId: z.string().min(1),
+  role: z.string().max(80).nullable().optional(),
+  routeStop: z.boolean().optional(),
+});
+
+export const travelStepInputSchema = z.object({
+  id: z.string().nullable().optional(),
+  agendaSlotId: z.string().nullable().optional(),
+  title: z.string().min(1).max(200),
+  startsAt: z.string().datetime().nullable().optional(),
+  endsAt: z.string().datetime().nullable().optional(),
+  summary: z.string().max(1000).nullable().optional(),
+  routeMode: z.string().max(40).nullable().optional(),
+  places: z.array(travelStepPlaceInputSchema).optional().default([]),
+});
+
+export const travelStopInputSchema = z.object({
+  id: z.string().nullable().optional(),
+  title: z.string().min(1).max(200),
+  startsAt: z.string().datetime().nullable().optional(),
+  endsAt: z.string().datetime().nullable().optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
+  summary: z.string().max(1000).nullable().optional(),
+  steps: z.array(travelStepInputSchema).optional().default([]),
+});
+
+export const travelPlaceInputSchema = z.object({
+  id: z.string().nullable().optional(),
+  stopId: z.string().nullable().optional(),
+  parentId: z.string().nullable().optional(),
+  title: z.string().min(1).max(200),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
+  address: z.string().max(500).nullable().optional(),
+  category: z.string().max(80).nullable().optional(),
+  summary: z.string().max(1000).nullable().optional(),
+});
+
+export const updateTravelStructureSchema = z.object({
+  stops: z.array(travelStopInputSchema),
+  places: z.array(travelPlaceInputSchema),
+});
+
+export const upsertNoteSchema = z.object({
+  ownerType: z.enum(['event', 'stop', 'step', 'place']),
+  ownerId: z.string().min(1),
+  title: z.string().min(1).max(200),
+  markdown: z.string().max(50000),
+  isSensitive: z.boolean().optional(),
+});
+
 export const adminCreateKeySchema = z.object({
   adminCreateKey: z.string(),
 });
 
-// Chat schemas
 export const chatEditSchema = z.object({
   slug: z.string().min(1),
   roomKey: z.string().min(1),
@@ -69,7 +122,6 @@ export const chatTypingSchema = z.object({
   isTyping: z.boolean(),
 });
 
-// Pagination schema for HTTP endpoint
 export const paginationQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().positive().max(100).optional().default(50),

@@ -79,7 +79,7 @@ interface Store {
   adminAnnounceAction: (slug: string, text: string) => Promise<void>;
   updateEventAction: (slug: string, data: { title?: string; startsAt?: string | null; endsAt?: string | null }) => Promise<void>;
   saveAgendaAction: (slug: string, slots: Array<Omit<AgendaSlotDTO, 'id' | 'sortIndex'>>) => Promise<void>;
-  saveLocationsAction: (slug: string, locations: Array<Omit<LocationDTO, 'id'>>) => Promise<void>;
+  saveLocationsAction: (slug: string, locations: LocationDTO[]) => Promise<void>;
   reset: () => void;
 }
 
@@ -128,14 +128,26 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   handleSnapshot: (snapshot) => {
-    set({
+    const availableRoomKeys = new Set(snapshot.rooms.map((room) => room.key));
+    const currentRoomKey = availableRoomKeys.has(get().chat.currentRoomKey)
+      ? get().chat.currentRoomKey
+      : 'general';
+
+    set((prev) => ({
       event: snapshot.event,
       locations: snapshot.locations,
       agenda: snapshot.agenda,
       state: snapshot.state,
       rooms: snapshot.rooms,
       announcements: snapshot.announcements,
-    });
+      chat: {
+        ...prev.chat,
+        currentRoomKey,
+        messagesByRoom: Object.fromEntries(
+          Object.entries(prev.chat.messagesByRoom).filter(([roomKey]) => availableRoomKeys.has(roomKey))
+        ),
+      },
+    }));
   },
 
   handleStateUpdate: (state) => {
@@ -570,6 +582,7 @@ export const useStore = create<Store>((set, get) => ({
     try {
       const updated = await saveAgenda(slug, jwt, slots);
       set({ agenda: updated });
+      await get().loadSnapshot(slug);
     } catch (error: any) {
       if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
         localStorage.removeItem(`adminJwt_${slug}`);
@@ -583,7 +596,7 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  saveLocationsAction: async (slug: string, locations: Array<Omit<LocationDTO, 'id'>>) => {
+  saveLocationsAction: async (slug: string, locations: LocationDTO[]) => {
     const jwt = get().jwt;
     if (!jwt) {
       set({ error: 'store.notAuthenticated' });
@@ -594,6 +607,7 @@ export const useStore = create<Store>((set, get) => ({
     try {
       const updated = await saveLocations(slug, jwt, locations);
       set({ locations: updated });
+      await get().loadSnapshot(slug);
     } catch (error: any) {
       if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
         localStorage.removeItem(`adminJwt_${slug}`);

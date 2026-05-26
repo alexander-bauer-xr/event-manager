@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { App } from './app';
 import './i18n';
 import './styles.css';
+import './travel.css';
+import './travel-state.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

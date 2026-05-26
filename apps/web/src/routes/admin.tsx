@@ -6,12 +6,15 @@ import { AdminLoginForm } from '../components/admin/AdminLoginForm';
 import { AdminControls } from '../components/admin/AdminControls';
 import { AgendaEditor } from '../components/admin/AgendaEditor';
 import { LocationsEditor } from '../components/admin/LocationsEditor';
+import { TravelStructureEditor } from '../components/admin/TravelStructureEditor';
 import { ChatPanel } from '../components/ChatPanel';
+
+type AdminSection = 'controls' | 'agenda' | 'locations' | 'travel' | 'chat';
 
 export function AdminPage() {
   const { slug } = useParams<{ slug: string }>();
   const { t } = useTranslation();
-  const [activeSection, setActiveSection] = useState<'controls' | 'agenda' | 'locations' | 'chat'>('controls');
+  const [activeSection, setActiveSection] = useState<AdminSection>('controls');
 
   const event = useStore((s) => s.event);
   const isAdmin = useStore((s) => s.isAdmin);
@@ -30,7 +33,6 @@ export function AdminPage() {
       const savedJwt = localStorage.getItem(`adminJwt_${slug}`);
 
       if (savedJwt) {
-        // Verify the JWT is still valid before trusting it
         useStore.setState({ jwt: savedJwt, loading: true });
         const isValid = await verifyAdminToken(slug, savedJwt);
 
@@ -41,12 +43,8 @@ export function AdminPage() {
       }
 
       await loadSnapshot(slug);
-
-      // Use saved guest name if available (from regular event access),
-      // otherwise default to 'Admin' for admin-only sessions
       const savedGuestName = localStorage.getItem(`guestName_${slug}`);
       const guestName = savedGuestName && savedGuestName !== 'Admin' ? savedGuestName : 'Admin';
-
       connectSocket(slug, guestName);
       joinRoom(slug, 'general');
     };
@@ -88,9 +86,7 @@ export function AdminPage() {
             ← {t('admin.backToEvent')}
           </Link>
         </header>
-        <main className="admin-content">
-          <AdminLoginForm />
-        </main>
+        <main className="admin-content"><AdminLoginForm /></main>
       </div>
     );
   }
@@ -127,6 +123,12 @@ export function AdminPage() {
           {t('admin.navLocations')}
         </button>
         <button
+          className={`admin-nav-btn ${activeSection === 'travel' ? 'active' : ''}`}
+          onClick={() => setActiveSection('travel')}
+        >
+          Travel Structure
+        </button>
+        <button
           className={`admin-nav-btn ${activeSection === 'chat' ? 'active' : ''}`}
           onClick={() => setActiveSection('chat')}
         >
@@ -138,6 +140,7 @@ export function AdminPage() {
         {activeSection === 'controls' && <AdminControls />}
         {activeSection === 'agenda' && <AgendaEditor />}
         {activeSection === 'locations' && <LocationsEditor />}
+        {activeSection === 'travel' && slug && <TravelStructureEditor slug={slug} />}
         {activeSection === 'chat' && <ChatPanel />}
       </main>
     </div>

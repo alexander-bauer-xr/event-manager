@@ -62,6 +62,13 @@ export interface EventSnapshot {
   }>;
 }
 
+type AgendaSlotForSync = {
+  id: string;
+  startTime: Date | null;
+  endTime: Date | null;
+  sortIndex: number;
+};
+
 export class EventService {
   async createEvent(input: CreateEventInput): Promise<CreateEventResult> {
     const slug = await slugifyUnique();
@@ -142,6 +149,8 @@ export class EventService {
       throw Errors.EVENT_NOT_FOUND();
     }
 
+    const state = await this.syncEventStateByTime(event.id);
+
     const locations = await prisma.location.findMany({
       where: { eventId: event.id },
       select: {
@@ -154,7 +163,7 @@ export class EventService {
       },
     });
 
-    const [agenda, state, rooms, announcements] = await Promise.all([
+    const [agenda, rooms, announcements] = await Promise.all([
       prisma.agendaSlot.findMany({
         where: { eventId: event.id },
         orderBy: { sortIndex: 'asc' },
@@ -168,7 +177,6 @@ export class EventService {
           sortIndex: true,
         },
       }),
-      this.ensureEventState(event.id),
       this.ensureChatRooms(event.id, locations),
       prisma.announcement.findMany({
         where: { eventId: event.id },
@@ -217,49 +225,129 @@ export class EventService {
     return state;
   }
 
+  private pickTimeBasedSlotId(
+    slots: AgendaSlotForSync[],
+    currentSlotId: string | null,
+    now: Date
+  ): string | null {
+    if (slots.length === 0) {
+      return null;
+    }
+
+    const nowMs = now.getTime();
+    const activeSlot = slots.find((slot) => {
+      if (!slot.startTime) return false;
+      const startsAt = slot.startTime.getTime();
+      const endsAt = slot.endTime?.getTime();
+      return startsAt <= nowMs && (!endsAt || endsAt > nowMs);
+    });
+
+    if (activeSlot) {
+      return activeSlot.id;
+    }
+
+    const currentSlot = currentSlotId ? slots.find((slot) => slot.id === currentSlotId) : null;
+    if (!currentSlot) {
+      const latestStartedSlot = [...slots]
+        .filter((slot) => slot.startTime && slot.startTime.getTime() <= nowMs)
+        .sort((a, b) => b.sortIndex - a.sortIndex)[0];
+
+      return latestStartedSlot?.id ?? null;
+    }
+
+    if (currentSlot.endTime && currentSlot.endTime.getTime() <= nowMs) {
+      const nextSlot = slots.find((slot) => slot.sortIndex > currentSlot.sortIndex);
+      return nextSlot?.id ?? currentSlot.id;
+    }
+
+    return currentSlot.id;
+  }
+
+  private async syncEventStateByTime(eventId: string): Promise<{ currentSlotId: string | null; updatedAt: Date }> {
+    const state = await this.ensureEventState(eventId);
+    const slots = await prisma.agendaSlot.findMany({
+      where: { eventId },
+      orderBy: { sortIndex: 'asc' },
+      select: {
+        id: true,
+        startTime: true,
+        endTime: true,
+        sortIndex: true,
+      },
+    });
+
+    const nextSlotId = this.pickTimeBasedSlotId(slots, state.currentSlotId, new Date());
+
+    if (nextSlotId === state.currentSlotId) {
+      return state;
+    }
+
+    return prisma.eventState.update({
+      where: { eventId },
+      data: {
+        currentSlotId: nextSlotId,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async syncEventStateForSlug(slug: string): Promise<{ state: { currentSlotId: string | null; updatedAt: Date }; changed: boolean }> {
+    const event = await prisma.event.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (!event) {
+      throw Errors.EVENT_NOT_FOUND();
+    }
+
+    const before = await this.ensureEventState(event.id);
+    const state = await this.syncEventStateByTime(event.id);
+
+    return {
+      state: {
+        currentSlotId: state.currentSlotId,
+        updatedAt: state.updatedAt,
+      },
+      changed: before.currentSlotId !== state.currentSlotId,
+    };
+  }
+
   private async ensureChatRooms(eventId: string, locations: Array<{ id: string; title: string }>) {
     const existingRooms = await prisma.chatRoom.findMany({
       where: { eventId },
     });
 
-    const existingKeys = new Set(existingRooms.map(r => r.key));
+    const existingByKey = new Map(existingRooms.map(r => [r.key, r]));
 
-    const roomsToCreate = [];
-
-    if (!existingKeys.has('general')) {
-      roomsToCreate.push({
-        eventId,
-        key: 'general',
-        title: 'General',
-        isAdminOnly: false,
-      });
-    }
-
-    if (!existingKeys.has('orga')) {
-      roomsToCreate.push({
-        eventId,
-        key: 'orga',
-        title: 'Organization',
-        isAdminOnly: true,
-      });
-    }
-
-    for (const location of locations) {
-      const key = `location:${location.id}`;
-      if (!existingKeys.has(key)) {
-        roomsToCreate.push({
-          eventId,
-          key,
-          title: location.title,
-          isAdminOnly: false,
+    const ensureRoom = async (key: string, title: string, isAdminOnly: boolean) => {
+      const existing = existingByKey.get(key);
+      if (!existing) {
+        return prisma.chatRoom.create({
+          data: {
+            eventId,
+            key,
+            title,
+            isAdminOnly,
+          },
         });
       }
-    }
 
-    if (roomsToCreate.length > 0) {
-      await prisma.chatRoom.createMany({
-        data: roomsToCreate,
-      });
+      if (existing.title !== title || existing.isAdminOnly !== isAdminOnly) {
+        return prisma.chatRoom.update({
+          where: { id: existing.id },
+          data: { title, isAdminOnly },
+        });
+      }
+
+      return existing;
+    };
+
+    await ensureRoom('general', 'General', false);
+    await ensureRoom('orga', 'Organization', true);
+
+    for (const location of locations) {
+      await ensureRoom(`location:${location.id}`, location.title, false);
     }
 
     return prisma.chatRoom.findMany({
@@ -375,6 +463,8 @@ export class EventService {
       })),
     });
 
+    await this.syncEventStateByTime(event.id);
+
     return prisma.agendaSlot.findMany({
       where: { eventId: event.id },
       orderBy: { sortIndex: 'asc' },
@@ -384,6 +474,7 @@ export class EventService {
   async updateLocations(
     slug: string,
     locations: Array<{
+      id?: string | null;
       title: string;
       lat?: number | null;
       lng?: number | null;
@@ -400,28 +491,76 @@ export class EventService {
       throw Errors.EVENT_NOT_FOUND();
     }
 
-    await prisma.location.deleteMany({
+    const existingLocations = await prisma.location.findMany({
+      where: { eventId: event.id },
+      select: { id: true },
+    });
+    const existingIds = new Set(existingLocations.map((loc) => loc.id));
+    const incomingExistingIds = new Set(
+      locations
+        .map((loc) => loc.id)
+        .filter((id): id is string => Boolean(id))
+    );
+
+    for (const loc of locations) {
+      if (loc.id && !existingIds.has(loc.id)) {
+        throw Errors.VALIDATION_ERROR('Location id does not belong to this event');
+      }
+    }
+
+    const removedIds = existingLocations
+      .map((loc) => loc.id)
+      .filter((id) => !incomingExistingIds.has(id));
+
+    await prisma.$transaction(async (tx) => {
+      for (const loc of locations) {
+        const data = {
+          title: loc.title,
+          lat: loc.lat,
+          lng: loc.lng,
+          address: loc.address,
+          note: loc.note,
+        };
+
+        if (loc.id) {
+          await tx.location.update({
+            where: { id: loc.id },
+            data,
+          });
+        } else {
+          await tx.location.create({
+            data: {
+              eventId: event.id,
+              ...data,
+            },
+          });
+        }
+      }
+
+      if (removedIds.length > 0) {
+        await tx.chatRoom.deleteMany({
+          where: {
+            eventId: event.id,
+            key: { in: removedIds.map((id) => `location:${id}`) },
+          },
+        });
+
+        await tx.location.deleteMany({
+          where: {
+            eventId: event.id,
+            id: { in: removedIds },
+          },
+        });
+      }
+    });
+
+    const updatedLocations = await prisma.location.findMany({
       where: { eventId: event.id },
     });
 
-    const created = await Promise.all(
-      locations.map(loc =>
-        prisma.location.create({
-          data: {
-            eventId: event.id,
-            title: loc.title,
-            lat: loc.lat,
-            lng: loc.lng,
-            address: loc.address,
-            note: loc.note,
-          },
-        })
-      )
-    );
+    await this.ensureChatRooms(event.id, updatedLocations);
 
-    await this.ensureChatRooms(event.id, created);
-
-    return created;
+    return updatedLocations;
   }
 }
 
