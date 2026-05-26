@@ -21,6 +21,7 @@ export const locationSchema = z.object({
 export const agendaSlotSchema = z.object({
   id: z.string(),
   title: z.string(),
+  description: z.string().nullable(),
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
   locationId: z.string().nullable(),

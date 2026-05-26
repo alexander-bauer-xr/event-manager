@@ -8,6 +8,7 @@ import {
   adminLoginSchema,
   announceSchema,
   createEventSchema,
+  updateEventSchema,
   updateAgendaSchema,
   updateLocationsSchema,
 } from './schemas';
@@ -73,6 +74,31 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     }
   });
 
+  app.put('/api/admin/events/:slug', async (request, reply) => {
+    try {
+      const { slug } = request.params as { slug: string };
+      await verifyAdmin(request, slug);
+
+      const body = updateEventSchema.parse(request.body);
+      const event = await eventService.updateEvent(slug, {
+        title: body.title,
+        startsAt: body.startsAt === null ? null : body.startsAt ? new Date(body.startsAt) : undefined,
+        endsAt: body.endsAt === null ? null : body.endsAt ? new Date(body.endsAt) : undefined,
+      });
+
+      return event;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send(toErrorResponse(Errors.VALIDATION_ERROR(error.message)));
+      }
+      if (error instanceof AppError) {
+        return reply.status(error.httpStatus).send(toErrorResponse(error));
+      }
+      request.log.error(error);
+      return reply.status(500).send(toErrorResponse(error));
+    }
+  });
+
   app.post('/api/admin/events/:slug/next', async (request, reply) => {
     try {
       const { slug } = request.params as { slug: string };
@@ -119,6 +145,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
         slug,
         body.slots.map(s => ({
           title: s.title,
+          description: s.description,
           startTime: s.startTime ? new Date(s.startTime) : undefined,
           endTime: s.endTime ? new Date(s.endTime) : undefined,
           locationId: s.locationId,

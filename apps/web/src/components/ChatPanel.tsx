@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 
 const MAX_MESSAGE_LENGTH = 400;
@@ -8,6 +9,7 @@ const RATE_LIMIT_WINDOW = 10000; // 10 seconds in milliseconds
 
 export function ChatPanel() {
   const { slug } = useParams<{ slug: string }>();
+  const { t, i18n } = useTranslation();
   const rooms = useStore((s) => s.rooms);
   const currentRoomKey = useStore((s) => s.chat.currentRoomKey);
   const messagesByRoom = useStore((s) => s.chat.messagesByRoom);
@@ -58,7 +60,7 @@ export function ChatPanel() {
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    
+
     // Only auto-scroll if user is near the bottom (within 100px)
     const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
     if (isNearBottom) {
@@ -125,10 +127,10 @@ export function ChatPanel() {
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    if (diffMins < 1) return t('chat.justNow');
+    if (diffMins < 60) return t('chat.minutesAgo', { count: diffMins });
+    if (diffMins < 1440) return t('chat.hoursAgo', { count: Math.floor(diffMins / 60) });
+    return date.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
   };
 
   const isOwnMessage = (msg: { guestName: string; guestId?: string }) => {
@@ -185,7 +187,7 @@ export function ChatPanel() {
   const handleDelete = (messageId: string) => {
     if (!slug) return;
 
-    if (confirm('Delete this message? This cannot be undone.')) {
+    if (confirm(t('chat.deleteConfirm'))) {
       deleteMessage(slug, currentRoomKey, messageId);
     }
   };
@@ -193,6 +195,22 @@ export function ChatPanel() {
   const handleLoadMore = () => {
     if (!slug || !hasMore || isLoadingMore) return;
     loadMoreMessages(slug, currentRoomKey);
+  };
+
+  // Build typing indicator text
+  const getTypingText = () => {
+    const users = Array.from(roomTypingUsers);
+    if (users.length === 0) return null;
+
+    if (users.length === 1) {
+      return t('chat.typingOne', { name: users[0] });
+    }
+
+    const displayNames = users.slice(0, 3).join(', ');
+    if (users.length > 3) {
+      return t('chat.typingMany', { names: displayNames + ' ' + t('chat.typingOthers', { count: users.length - 3 }) });
+    }
+    return t('chat.typingMany', { names: displayNames });
   };
 
   // Clear typing indicator when sending message
@@ -214,17 +232,17 @@ export function ChatPanel() {
               onClick={() => handleRoomChange(room.key)}
             >
               {room.title}
-              {room.isAdminOnly && <span className="admin-badge">Admin</span>}
+              {room.isAdminOnly && <span className="admin-badge">{t('chat.adminBadge')}</span>}
             </button>
           ))}
         </div>
         <div className="chat-presence">
           <span className="chat-presence-dot"></span>
-          <span className="chat-presence-count">{presence.count} online</span>
+          <span className="chat-presence-count">{t('chat.online', { count: presence.count })}</span>
         </div>
       </div>
 
-      {error && <div className="chat-error">{error}</div>}
+      {error && <div className="chat-error">{t(error as any)}</div>}
 
       <div className="chat-messages" ref={messagesContainerRef}>
         {hasMore && (
@@ -233,22 +251,22 @@ export function ChatPanel() {
             onClick={handleLoadMore}
             disabled={isLoadingMore}
           >
-            {isLoadingMore ? 'Loading...' : 'Load More Messages'}
+            {isLoadingMore ? t('chat.loadingMore') : t('chat.loadMore')}
           </button>
         )}
         {isLoadingHistory ? (
           <div className="chat-loading">
             <div className="chat-loading-spinner"></div>
-            <span>Loading messages...</span>
+            <span>{t('chat.loadingMessages')}</span>
           </div>
         ) : messages.length === 0 ? (
           <div className="chat-empty-state">
             <div className="chat-empty-icon">💬</div>
-            <div className="chat-empty-title">No messages yet</div>
+            <div className="chat-empty-title">{t('chat.emptyTitle')}</div>
             <div className="chat-empty-subtitle">
               {currentRoom?.isAdminOnly
-                ? 'Private admin discussion. Only organizers can see this.'
-                : 'Be the first to start the conversation!'}
+                ? t('chat.emptySubtitleAdmin')
+                : t('chat.emptySubtitlePublic')}
             </div>
           </div>
         ) : (
@@ -265,7 +283,7 @@ export function ChatPanel() {
                   {showAuthor && (
                     <div className="chat-message-header">
                       <span className="chat-message-author">
-                        {own ? 'You' : msg.guestName}
+                        {own ? t('chat.you') : msg.guestName}
                       </span>
                       <span className="chat-message-time">{formatTimestamp(msg.createdAt)}</span>
                     </div>
@@ -283,10 +301,10 @@ export function ChatPanel() {
                       />
                       <div className="chat-message-edit-actions">
                         <button type="submit" className="chat-btn-save" disabled={!editText.trim()}>
-                          Save
+                          {t('chat.save')}
                         </button>
                         <button type="button" onClick={cancelEdit} className="chat-btn-cancel">
-                          Cancel
+                          {t('chat.cancel')}
                         </button>
                       </div>
                     </form>
@@ -295,8 +313,8 @@ export function ChatPanel() {
                       <div className="chat-message-content">
                         <div className="chat-message-text">{msg.text}</div>
                         {msg.isEdited && (
-                          <span className="chat-message-edited" title={`Edited ${formatTimestamp(msg.editedAt!)}`}>
-                            (edited)
+                          <span className="chat-message-edited" title={`${t('chat.edited')} ${formatTimestamp(msg.editedAt!)}`}>
+                            {t('chat.edited')}
                           </span>
                         )}
                       </div>
@@ -306,14 +324,14 @@ export function ChatPanel() {
                           <button
                             className="chat-action-btn chat-edit-btn"
                             onClick={() => startEdit(msg.id, msg.text)}
-                            title="Edit message"
+                            title={t('chat.editMessage')}
                           >
                             ✏️
                           </button>
                           <button
                             className="chat-action-btn chat-delete-btn"
                             onClick={() => handleDelete(msg.id)}
-                            title="Delete message"
+                            title={t('chat.deleteMessage')}
                           >
                             🗑️
                           </button>
@@ -325,7 +343,7 @@ export function ChatPanel() {
                           <button
                             className="chat-action-btn chat-delete-btn admin"
                             onClick={() => handleDelete(msg.id)}
-                            title="Delete message (Admin)"
+                            title={t('chat.deleteMessageAdmin')}
                           >
                             🗑️
                           </button>
@@ -340,10 +358,7 @@ export function ChatPanel() {
             {roomTypingUsers.size > 0 && (
               <div className="chat-typing-indicator">
                 <div className="chat-typing-text">
-                  {Array.from(roomTypingUsers).slice(0, 3).join(', ')}
-                  {roomTypingUsers.size > 3 && ` and ${roomTypingUsers.size - 3} others`}
-                  {' '}
-                  {roomTypingUsers.size === 1 ? 'is' : 'are'} typing
+                  {getTypingText()}
                   <span className="chat-typing-dots">
                     <span>.</span><span>.</span><span>.</span>
                   </span>
@@ -361,7 +376,7 @@ export function ChatPanel() {
           <input
             type="text"
             className="chat-input"
-            placeholder={`Message ${currentRoom?.title || 'chat'}...`}
+            placeholder={t('chat.messagePlaceholder', { room: currentRoom?.title || 'chat' })}
             value={messageText}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
@@ -372,7 +387,7 @@ export function ChatPanel() {
             type="submit"
             className="chat-send-btn"
             disabled={!canSend}
-            title={isRateLimited ? `Rate limited. Wait ${rateLimitCountdown}s` : 'Send message'}
+            title={isRateLimited ? t('chat.rateLimitTitle', { seconds: rateLimitCountdown }) : t('chat.editMessage')}
           >
             {isRateLimited ? (
               <span className="chat-countdown">{rateLimitCountdown}s</span>
@@ -390,7 +405,7 @@ export function ChatPanel() {
           </div>
           {isRateLimited && (
             <div className="chat-rate-limit-warning">
-              ⏱️ Slow down! Wait {rateLimitCountdown}s
+              ⏱️ {t('chat.rateLimitWarning', { seconds: rateLimitCountdown })}
             </div>
           )}
         </div>

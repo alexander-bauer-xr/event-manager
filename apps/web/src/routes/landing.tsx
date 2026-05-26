@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [slug, setSlug] = useState('');
   const [guestName, setGuestName] = useState('');
 
@@ -22,44 +25,45 @@ export function LandingPage() {
   return (
     <div className="landing-page">
       <div className="landing-container">
-        <h1 className="landing-title">Pop-up Event Hub</h1>
-        <p className="landing-subtitle">Join a live event with realtime updates, chat, and navigation</p>
+        <h1 className="landing-title">{t('landing.title')}</h1>
+        <LanguageSwitcher />
+        <p className="landing-subtitle">{t('landing.subtitle')}</p>
 
         <form onSubmit={handleJoin} className="landing-form">
           <div className="form-group">
-            <label htmlFor="slug">Event Code</label>
+            <label htmlFor="slug">{t('landing.eventCodeLabel')}</label>
             <input
               id="slug"
               type="text"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              placeholder="Enter event code"
+              placeholder={t('landing.eventCodePlaceholder')}
               className="form-input"
               autoComplete="off"
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="guestName">Your Name</label>
+            <label htmlFor="guestName">{t('landing.nameLabel')}</label>
             <input
               id="guestName"
               type="text"
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Enter your name"
+              placeholder={t('landing.namePlaceholder')}
               className="form-input"
               autoComplete="name"
             />
           </div>
 
           <button type="submit" disabled={!slug.trim() || !guestName.trim()} className="btn btn-primary btn-large">
-            Join Event
+            {t('landing.joinButton')}
           </button>
         </form>
 
         <div className="landing-admin-link">
           <button onClick={handleAdminLink} disabled={!slug.trim()} className="btn-link">
-            Admin Login →
+            {t('landing.adminLink')} →
           </button>
         </div>
       </div>

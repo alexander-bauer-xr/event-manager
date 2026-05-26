@@ -8,7 +8,7 @@ import type {
   PresenceState,
 } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL ?? '';
+const SOCKET_PATH = import.meta.env.VITE_SOCKET_PATH ?? '/socket.io';
 
 export interface SocketCallbacks {
   onSnapshot: (snapshot: SnapshotDTO) => void;
@@ -41,7 +41,7 @@ class SocketClient {
       auth.jwt = jwt;
     }
 
-    this.socket = io(API_URL, { auth });
+    this.socket = io('', { auth, path: SOCKET_PATH });
     this.callbacks = callbacks;
 
     this.socket.on('connect', () => {

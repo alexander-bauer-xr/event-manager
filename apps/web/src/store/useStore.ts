@@ -16,6 +16,7 @@ import {
   adminLogin,
   adminNext,
   adminAnnounce,
+  updateEvent,
   saveAgenda,
   saveLocations,
   getChatMessagesPaginated,
@@ -76,6 +77,7 @@ interface Store {
   verifyAdminToken: (slug: string, jwt: string) => Promise<boolean>;
   adminNextAction: (slug: string) => Promise<void>;
   adminAnnounceAction: (slug: string, text: string) => Promise<void>;
+  updateEventAction: (slug: string, data: { title?: string; startsAt?: string | null; endsAt?: string | null }) => Promise<void>;
   saveAgendaAction: (slug: string, slots: Array<Omit<AgendaSlotDTO, 'id' | 'sortIndex'>>) => Promise<void>;
   saveLocationsAction: (slug: string, locations: Array<Omit<LocationDTO, 'id'>>) => Promise<void>;
   reset: () => void;
@@ -119,7 +121,7 @@ export const useStore = create<Store>((set, get) => ({
       const snapshot = await getSnapshot(slug);
       get().handleSnapshot(snapshot);
     } catch (error: any) {
-      set({ error: error.message || 'Failed to load event' });
+      set({ error: error.message || 'store.loadEventError' });
     } finally {
       set({ loading: false });
     }
@@ -464,7 +466,7 @@ export const useStore = create<Store>((set, get) => ({
 
       get().connectSocket(slug, guestName);
     } catch (error: any) {
-      set({ error: error.message || 'Login failed' });
+      set({ error: error.message || 'store.loginFailed' });
       throw error;
     } finally {
       set({ loading: false });
@@ -499,7 +501,7 @@ export const useStore = create<Store>((set, get) => ({
   adminNextAction: async (slug: string) => {
     const jwt = get().jwt;
     if (!jwt) {
-      set({ error: 'Not authenticated' });
+      set({ error: 'store.notAuthenticated' });
       return;
     }
 
@@ -508,9 +510,9 @@ export const useStore = create<Store>((set, get) => ({
     } catch (error: any) {
       if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
         localStorage.removeItem(`adminJwt_${slug}`);
-        set({ jwt: null, isAdmin: false, error: 'Session expired. Please login again.' });
+        set({ jwt: null, isAdmin: false, error: 'store.sessionExpired' });
       } else {
-        set({ error: error.message || 'Failed to advance' });
+        set({ error: error.message || 'store.advanceError' });
       }
       throw error;
     }
@@ -519,7 +521,7 @@ export const useStore = create<Store>((set, get) => ({
   adminAnnounceAction: async (slug: string, text: string) => {
     const jwt = get().jwt;
     if (!jwt) {
-      set({ error: 'Not authenticated' });
+      set({ error: 'store.notAuthenticated' });
       return;
     }
 
@@ -528,9 +530,30 @@ export const useStore = create<Store>((set, get) => ({
     } catch (error: any) {
       if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
         localStorage.removeItem(`adminJwt_${slug}`);
-        set({ jwt: null, isAdmin: false, error: 'Session expired. Please login again.' });
+        set({ jwt: null, isAdmin: false, error: 'store.sessionExpired' });
       } else {
-        set({ error: error.message || 'Failed to announce' });
+        set({ error: error.message || 'store.announceError' });
+      }
+      throw error;
+    }
+  },
+
+  updateEventAction: async (slug: string, data: { title?: string; startsAt?: string | null; endsAt?: string | null }) => {
+    const jwt = get().jwt;
+    if (!jwt) {
+      set({ error: 'store.notAuthenticated' });
+      return;
+    }
+
+    try {
+      const updated = await updateEvent(slug, jwt, data);
+      set({ event: updated });
+    } catch (error: any) {
+      if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
+        localStorage.removeItem(`adminJwt_${slug}`);
+        set({ jwt: null, isAdmin: false, error: 'store.sessionExpired' });
+      } else {
+        set({ error: error.message || 'store.updateEventError' });
       }
       throw error;
     }
@@ -539,7 +562,7 @@ export const useStore = create<Store>((set, get) => ({
   saveAgendaAction: async (slug: string, slots: Array<Omit<AgendaSlotDTO, 'id' | 'sortIndex'>>) => {
     const jwt = get().jwt;
     if (!jwt) {
-      set({ error: 'Not authenticated' });
+      set({ error: 'store.notAuthenticated' });
       return;
     }
 
@@ -550,9 +573,9 @@ export const useStore = create<Store>((set, get) => ({
     } catch (error: any) {
       if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
         localStorage.removeItem(`adminJwt_${slug}`);
-        set({ jwt: null, isAdmin: false, error: 'Session expired. Please login again.' });
+        set({ jwt: null, isAdmin: false, error: 'store.sessionExpired' });
       } else {
-        set({ error: error.message || 'Failed to save agenda' });
+        set({ error: error.message || 'store.saveAgendaError' });
       }
       throw error;
     } finally {
@@ -563,7 +586,7 @@ export const useStore = create<Store>((set, get) => ({
   saveLocationsAction: async (slug: string, locations: Array<Omit<LocationDTO, 'id'>>) => {
     const jwt = get().jwt;
     if (!jwt) {
-      set({ error: 'Not authenticated' });
+      set({ error: 'store.notAuthenticated' });
       return;
     }
 
@@ -574,9 +597,9 @@ export const useStore = create<Store>((set, get) => ({
     } catch (error: any) {
       if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
         localStorage.removeItem(`adminJwt_${slug}`);
-        set({ jwt: null, isAdmin: false, error: 'Session expired. Please login again.' });
+        set({ jwt: null, isAdmin: false, error: 'store.sessionExpired' });
       } else {
-        set({ error: error.message || 'Failed to save locations' });
+        set({ error: error.message || 'store.saveLocationsError' });
       }
       throw error;
     } finally {

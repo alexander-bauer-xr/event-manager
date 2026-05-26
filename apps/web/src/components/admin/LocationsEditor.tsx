@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 
 interface EditableLocation {
@@ -13,6 +14,7 @@ interface EditableLocation {
 
 export function LocationsEditor() {
   const { slug } = useParams<{ slug: string }>();
+  const { t } = useTranslation();
   const locations = useStore((s) => s.locations);
   const saveLocationsAction = useStore((s) => s.saveLocationsAction);
   const loading = useStore((s) => s.loading);
@@ -53,14 +55,14 @@ export function LocationsEditor() {
 
   const validateLocation = (loc: EditableLocation): { error: string | null; warning: string | null } => {
     if (!loc.title.trim()) {
-      return { error: 'Title is required', warning: null };
+      return { error: t('locationsEditor.titleRequired'), warning: null };
     }
 
     const hasLat = loc.lat.trim() !== '';
     const hasLng = loc.lng.trim() !== '';
 
     if (hasLat !== hasLng) {
-      return { error: 'Both latitude and longitude are required', warning: null };
+      return { error: t('locationsEditor.bothCoordsRequired'), warning: null };
     }
 
     if (hasLat && hasLng) {
@@ -68,14 +70,14 @@ export function LocationsEditor() {
       const lng = parseFloat(loc.lng);
 
       if (isNaN(lat) || isNaN(lng)) {
-        return { error: 'Invalid coordinates', warning: null };
+        return { error: t('locationsEditor.invalidCoords'), warning: null };
       }
 
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        return { error: 'Coordinates out of valid range', warning: null };
+        return { error: t('locationsEditor.coordsOutOfRange'), warning: null };
       }
     } else {
-      return { error: null, warning: 'Location will not appear on map without coordinates' };
+      return { error: null, warning: t('locationsEditor.noMapWarning') };
     }
 
     return { error: null, warning: null };
@@ -89,7 +91,7 @@ export function LocationsEditor() {
     const hasErrors = validations.some(v => v.error !== null);
 
     if (hasErrors) {
-      toast.error('Please fix validation errors before saving');
+      toast.error(t('locationsEditor.fixErrors'));
       return;
     }
 
@@ -104,10 +106,10 @@ export function LocationsEditor() {
     try {
       await saveLocationsAction(slug, locationsToSave);
       setEditing(false);
-      toast.success('Locations saved successfully!');
+      toast.success(t('locationsEditor.saveSuccess'));
     } catch (err) {
       console.error('Failed to save locations:', err);
-      toast.error('Failed to save locations. Please try again.');
+      toast.error(t('locationsEditor.saveError'));
     }
   };
 
@@ -127,9 +129,9 @@ export function LocationsEditor() {
   return (
     <div className="locations-editor">
       <div className="editor-header">
-        <h2>Locations Editor</h2>
+        <h2>{t('locationsEditor.title')}</h2>
         <button onClick={handleAdd} className="btn btn-secondary">
-          Add Location
+          {t('locationsEditor.addLocation')}
         </button>
       </div>
 
@@ -139,7 +141,7 @@ export function LocationsEditor() {
           return (
             <div key={index} className="editor-item">
               <div className="editor-item-controls">
-                <button onClick={() => handleRemove(index)} className="btn-icon btn-danger" title="Remove">
+                <button onClick={() => handleRemove(index)} className="btn-icon btn-danger" title={t('locationsEditor.remove')}>
                   ✕
                 </button>
               </div>
@@ -148,7 +150,7 @@ export function LocationsEditor() {
                   type="text"
                   value={loc.title}
                   onChange={(e) => handleChange(index, 'title', e.target.value)}
-                  placeholder="Title"
+                  placeholder={t('locationsEditor.titlePlaceholder')}
                   className={`form-input ${!loc.title.trim() ? 'input-error' : ''}`}
                 />
                 <div className="coords-group">
@@ -157,7 +159,7 @@ export function LocationsEditor() {
                     step="any"
                     value={loc.lat}
                     onChange={(e) => handleChange(index, 'lat', e.target.value)}
-                    placeholder="Latitude"
+                    placeholder={t('locationsEditor.latPlaceholder')}
                     className="form-input"
                   />
                   <input
@@ -165,7 +167,7 @@ export function LocationsEditor() {
                     step="any"
                     value={loc.lng}
                     onChange={(e) => handleChange(index, 'lng', e.target.value)}
-                    placeholder="Longitude"
+                    placeholder={t('locationsEditor.lngPlaceholder')}
                     className="form-input"
                   />
                 </div>
@@ -173,13 +175,13 @@ export function LocationsEditor() {
                   type="text"
                   value={loc.address}
                   onChange={(e) => handleChange(index, 'address', e.target.value)}
-                  placeholder="Address (optional)"
+                  placeholder={t('locationsEditor.addressPlaceholder')}
                   className="form-input"
                 />
                 <textarea
                   value={loc.note}
                   onChange={(e) => handleChange(index, 'note', e.target.value)}
-                  placeholder="Note (optional)"
+                  placeholder={t('locationsEditor.notePlaceholder')}
                   className="form-textarea"
                   rows={2}
                 />
@@ -198,10 +200,10 @@ export function LocationsEditor() {
       {editing && (
         <div className="editor-actions">
           <button onClick={handleSave} disabled={loading} className="btn btn-primary">
-            {loading ? 'Saving...' : 'Save Locations'}
+            {loading ? t('locationsEditor.saving') : t('locationsEditor.saveLocations')}
           </button>
           <button onClick={handleCancel} disabled={loading} className="btn btn-secondary">
-            Cancel
+            {t('locationsEditor.cancel')}
           </button>
         </div>
       )}

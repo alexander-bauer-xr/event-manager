@@ -8,6 +8,12 @@ export interface CreateEventInput {
   endsAt?: Date;
 }
 
+export interface UpdateEventInput {
+  title?: string;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
+}
+
 export interface CreateEventResult {
   slug: string;
   adminToken: string;
@@ -33,6 +39,7 @@ export interface EventSnapshot {
   agenda: Array<{
     id: string;
     title: string;
+    description: string | null;
     startTime: Date | null;
     endTime: Date | null;
     locationId: string | null;
@@ -89,6 +96,35 @@ export class EventService {
     };
   }
 
+  async updateEvent(slug: string, input: UpdateEventInput) {
+    const event = await prisma.event.findUnique({
+      where: { slug },
+    });
+
+    if (!event) {
+      throw Errors.EVENT_NOT_FOUND();
+    }
+
+    const updated = await prisma.event.update({
+      where: { slug },
+      data: {
+        ...(input.title !== undefined && { title: input.title }),
+        ...(input.startsAt !== undefined && { startsAt: input.startsAt }),
+        ...(input.endsAt !== undefined && { endsAt: input.endsAt }),
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        startsAt: true,
+        endsAt: true,
+        createdAt: true,
+      },
+    });
+
+    return updated;
+  }
+
   async getSnapshot(slug: string): Promise<EventSnapshot> {
     const event = await prisma.event.findUnique({
       where: { slug },
@@ -125,6 +161,7 @@ export class EventService {
         select: {
           id: true,
           title: true,
+          description: true,
           startTime: true,
           endTime: true,
           locationId: true,
@@ -307,9 +344,10 @@ export class EventService {
     slug: string,
     slots: Array<{
       title: string;
-      startTime?: Date;
-      endTime?: Date;
-      locationId?: string;
+      description?: string | null;
+      startTime?: Date | null;
+      endTime?: Date | null;
+      locationId?: string | null;
     }>
   ) {
     const event = await prisma.event.findUnique({
@@ -329,6 +367,7 @@ export class EventService {
       data: slots.map((slot, index) => ({
         eventId: event.id,
         title: slot.title,
+        description: slot.description,
         startTime: slot.startTime,
         endTime: slot.endTime,
         locationId: slot.locationId,
@@ -346,10 +385,10 @@ export class EventService {
     slug: string,
     locations: Array<{
       title: string;
-      lat?: number;
-      lng?: number;
-      address?: string;
-      note?: string;
+      lat?: number | null;
+      lng?: number | null;
+      address?: string | null;
+      note?: string | null;
     }>
   ) {
     const event = await prisma.event.findUnique({

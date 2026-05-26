@@ -19,6 +19,7 @@ export interface LocationDTO {
 export interface AgendaSlotDTO {
   id: string;
   title: string;
+  description: string | null;
   startTime: string | null;
   endTime: string | null;
   locationId: string | null;

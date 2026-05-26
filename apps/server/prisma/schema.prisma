@@ -42,13 +42,14 @@ model Location {
 }
 
 model AgendaSlot {
-  id         String    @id @default(cuid())
-  eventId    String
-  title      String
-  startTime  DateTime?
-  endTime    DateTime?
-  locationId String?
-  sortIndex  Int
+  id          String    @id @default(cuid())
+  eventId     String
+  title       String
+  description String?
+  startTime   DateTime?
+  endTime     DateTime?
+  locationId  String?
+  sortIndex   Int
 
   event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)

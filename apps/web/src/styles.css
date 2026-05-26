@@ -318,6 +318,14 @@ body {
   flex-direction: column;
 }
 
+.event-page {
+  --event-tabs-top: 140px;
+}
+
+.event-page.header-compact {
+  --event-tabs-top: 64px;
+}
+
 .event-header {
   background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.95) 100%);
   backdrop-filter: blur(10px);
@@ -327,6 +335,7 @@ body {
   top: 0;
   z-index: 100;
   box-shadow: var(--shadow);
+  transition: padding var(--transition-slow), box-shadow var(--transition-slow);
 }
 
 .event-header-content {
@@ -339,6 +348,7 @@ body {
   max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
+  transition: margin-bottom var(--transition-slow), gap var(--transition-slow);
 }
 
 .event-title {
@@ -348,12 +358,14 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  transition: font-size var(--transition-slow);
 }
 
 .event-header-meta {
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
+  transition: gap var(--transition-slow);
 }
 
 .connection-indicator {
@@ -365,6 +377,7 @@ body {
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--border-radius);
   background: var(--color-surface);
+  transition: font-size var(--transition-slow), padding var(--transition-slow);
 }
 
 .connection-indicator::before {
@@ -402,6 +415,8 @@ body {
   margin: 0 auto;
   position: relative;
   overflow: hidden;
+  max-height: 1000px;
+  transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.25s ease, gap 0.25s ease, box-shadow 0.25s ease;
 }
 
 .now-next-banner::before {
@@ -446,18 +461,21 @@ body {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.2;
+  transition: font-size var(--transition-slow);
 }
 
 .now-next-time {
   font-size: 0.875rem;
   opacity: 0.95;
   font-weight: 500;
+  transition: font-size var(--transition-slow);
 }
 
 .now-next-empty {
   font-size: 1rem;
   opacity: 0.7;
   font-style: italic;
+  transition: font-size var(--transition-slow);
 }
 
 .now-next-divider {
@@ -465,6 +483,38 @@ body {
   background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.4), transparent);
   position: relative;
   z-index: 1;
+}
+
+.event-page.header-compact .event-header {
+  padding: var(--spacing-md) var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.event-page.header-compact .event-header-content {
+  margin-bottom: 0;
+  gap: var(--spacing-sm);
+}
+
+.event-page.header-compact .event-title {
+  font-size: 1.35rem;
+}
+
+.event-page.header-compact .event-header-meta {
+  gap: var(--spacing-md);
+}
+
+.event-page.header-compact .connection-indicator {
+  font-size: 0.75rem;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.event-page.header-compact .now-next-banner {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  gap: 0;
+  box-shadow: none;
+  pointer-events: none;
 }
 
 .event-tabs,
@@ -477,6 +527,11 @@ body {
   top: 140px;
   z-index: 50;
   box-shadow: var(--shadow-sm);
+}
+
+.event-tabs {
+  top: var(--event-tabs-top);
+  transition: top var(--transition-slow);
 }
 
 .tab-icon {
@@ -771,6 +826,38 @@ body {
   animation: countdown-pulse 1s infinite;
 }
 
+.agenda-item-description {
+  margin-top: var(--spacing-sm);
+}
+
+.agenda-item-description-text {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+
+.agenda-item-description-text.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.agenda-read-more-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.agenda-read-more-btn:hover {
+  text-decoration: underline;
+}
+
 @keyframes countdown-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }
@@ -922,6 +1009,7 @@ body {
 
 .chat-message.own-message .chat-message-header {
   flex-direction: row-reverse;
+  gap: 5px;
 }
 
 .chat-message.own-message .chat-message-text {
@@ -1123,6 +1211,19 @@ body {
   font-size: 0.875rem;
   color: var(--color-text-muted);
   max-width: 280px;
+}
+
+.chat-presence-count {
+  margin: 8px;
+}
+
+.chat-action-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
 }
 
 .map-panel {
@@ -1379,6 +1480,14 @@ body {
 
 /* Tablet Breakpoint - 768px */
 @media (max-width: 768px) {
+  .event-page {
+    --event-tabs-top: 160px;
+  }
+
+  .event-page.header-compact {
+    --event-tabs-top: 112px;
+  }
+
   .landing-container {
     padding: var(--spacing-xl);
   }
@@ -1434,10 +1543,6 @@ body {
   .event-content,
   .admin-content {
     padding: var(--spacing-lg);
-  }
-
-  .event-tabs {
-    top: 160px;
   }
 
   /* Increase touch targets on tablet */
@@ -1780,6 +1885,143 @@ body {
 .validation-warning::before {
   content: 'ℹ';
   font-size: 1rem;
+}
+
+/* Countdown Styles */
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: 600;
+}
+
+.countdown-label {
+  opacity: 0.9;
+}
+
+.countdown-time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Banner variant - large centered display */
+.countdown-banner {
+  justify-content: center;
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--border-radius);
+  font-size: 1.25rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.countdown-banner .countdown-label {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
+
+.countdown-banner .countdown-time {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Inline variant - fits in agenda items */
+.countdown-inline {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--border-radius-sm);
+  color: var(--color-primary-light);
+  font-size: 0.875rem;
+}
+
+/* Compact variant - small display */
+.countdown-compact {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Urgent state - pulsing animation for < 5min */
+.countdown-urgent {
+  animation: countdown-urgent-pulse 1s ease-in-out infinite;
+}
+
+.countdown-urgent.countdown-banner {
+  background: rgba(239, 68, 68, 0.3);
+  border: 1px solid var(--color-danger);
+}
+
+.countdown-urgent.countdown-inline {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+@keyframes countdown-urgent-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+/* Now/Next Banner countdown additions */
+.now-next-event-countdown {
+  text-align: center;
+  padding-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+.now-next-event-countdown .countdown-banner {
+  background: rgba(0, 0, 0, 0.25);
+  margin-bottom: 0;
+}
+
+.now-next-countdown {
+  margin-top: var(--spacing-xs);
+}
+
+.now-next-countdown .countdown-compact {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.8rem;
+}
+
+.now-next-countdown .countdown-urgent {
+  color: #fca5a5;
+}
+
+/* Agenda next item countdown */
+.agenda-next-countdown {
+  margin-top: var(--spacing-sm);
+}
+
+/* Language Switcher */
+.language-switcher {
+  position: fixed;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  z-index: 200;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+
+.language-switcher:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

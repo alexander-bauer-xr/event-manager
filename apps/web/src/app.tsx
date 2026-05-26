@@ -6,7 +6,7 @@ import { AdminPage } from './routes/admin';
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/events">
       <Toaster
         position="top-right"
         toastOptions={{

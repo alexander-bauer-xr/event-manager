@@ -1,7 +1,28 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
+import { Countdown } from './Countdown';
+
+const DESCRIPTION_THRESHOLD = 120;
+
+function ReadMore({ text }: { text: string }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const needsToggle = text.length > DESCRIPTION_THRESHOLD;
+  return (
+    <div className="agenda-item-description">
+      <p className={`agenda-item-description-text ${needsToggle && !expanded ? 'clamped' : ''}`}>{text}</p>
+      {needsToggle && (
+        <button className="agenda-read-more-btn" onClick={() => setExpanded(!expanded)}>
+          {expanded ? t('agenda.showLess') : t('agenda.readMore')}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function AgendaList() {
+  const { t, i18n } = useTranslation();
   const agenda = useStore((s) => s.agenda);
   const state = useStore((s) => s.state);
   const locations = useStore((s) => s.locations);
@@ -17,12 +38,12 @@ export function AgendaList() {
 
   const formatTime = (time: string | null) => {
     if (!time) return '';
-    return new Date(time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return new Date(time).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getLocationTitle = (locationId: string | null) => {
+  const getLocation = (locationId: string | null) => {
     if (!locationId) return null;
-    return locations.find((loc) => loc.id === locationId)?.title;
+    return locations.find((loc) => loc.id === locationId) ?? null;
   };
 
   const calculateDuration = (startTime: string | null, endTime: string | null): string | null => {
@@ -46,19 +67,21 @@ export function AgendaList() {
     const end = new Date(endTime);
     const diffMs = end.getTime() - currentTime.getTime();
 
-    if (diffMs <= 0) return 'Ending soon';
+    if (diffMs <= 0) return t('agenda.endingSoon');
 
     const diffMins = Math.floor(diffMs / 60000);
 
     if (diffMins < 1) {
       const secs = Math.floor(diffMs / 1000);
-      return `${secs}s left`;
+      return t('agenda.secondsLeft', { count: secs });
     } else if (diffMins < 60) {
-      return `${diffMins}m left`;
+      return t('agenda.minutesLeft', { count: diffMins });
     } else {
       const hours = Math.floor(diffMins / 60);
       const mins = diffMins % 60;
-      return mins > 0 ? `${hours}h ${mins}m left` : `${hours}h left`;
+      return mins > 0
+        ? t('agenda.hoursMinutesLeft', { hours, minutes: mins })
+        : t('agenda.hoursLeft', { count: hours });
     }
   };
 
@@ -91,15 +114,15 @@ export function AgendaList() {
   return (
     <div className="agenda-list">
       {agenda.length === 0 ? (
-        <div className="empty-state">No agenda items yet</div>
+        <div className="empty-state">{t('agenda.empty')}</div>
       ) : (
         <>
           {/* Progress Bar */}
           <div className="agenda-progress">
             <div className="agenda-progress-header">
-              <span className="agenda-progress-label">Event Progress</span>
+              <span className="agenda-progress-label">{t('agenda.progress')}</span>
               <span className="agenda-progress-stats">
-                {completedCount >= 0 ? completedCount : 0} of {agenda.length} completed
+                {t('agenda.stats', { completed: completedCount >= 0 ? completedCount : 0, total: agenda.length })}
               </span>
             </div>
             <div className="agenda-progress-bar">
@@ -115,6 +138,8 @@ export function AgendaList() {
             const status = getItemStatus(index);
             const duration = calculateDuration(slot.startTime, slot.endTime);
             const timeRemaining = status === 'current' ? calculateTimeRemaining(slot.endTime) : null;
+            const isFirstUpcoming = status === 'upcoming' && index === 0 && completedCount < 0;
+            const location = getLocation(slot.locationId);
 
             return (
               <div
@@ -126,8 +151,8 @@ export function AgendaList() {
                 <div className="agenda-item-content">
                   <div className="agenda-item-header">
                     <div className="agenda-item-title">{slot.title}</div>
-                    {status === 'current' && <div className="current-badge">Now</div>}
-                    {status === 'past' && <div className="past-badge">Completed</div>}
+                    {status === 'current' && <div className="current-badge">{t('agenda.badgeNow')}</div>}
+                    {status === 'past' && <div className="past-badge">{t('agenda.badgeCompleted')}</div>}
                   </div>
 
                   <div className="agenda-item-meta">
@@ -137,16 +162,30 @@ export function AgendaList() {
                         {duration && <span className="agenda-item-duration">({duration})</span>}
                       </div>
                     )}
-                    {slot.locationId && (
+                    {location && (
                       <div className="agenda-item-location">
-                        📍 {getLocationTitle(slot.locationId)}
+                        📍 {location.title}
                       </div>
                     )}
                   </div>
 
+                  {slot.description && <ReadMore text={slot.description} />}
+                  {location?.note && <ReadMore text={location.note} />}
+
                   {status === 'current' && timeRemaining && (
                     <div className="agenda-item-countdown">
                       ⏱ {timeRemaining}
+                    </div>
+                  )}
+
+                  {isFirstUpcoming && slot.startTime && (
+                    <div className="agenda-next-countdown">
+                      <Countdown
+                        targetTime={slot.startTime}
+                        label={t('agenda.startsIn')}
+                        variant="inline"
+                        hideWhenExpired
+                      />
                     </div>
                   )}
                 </div>

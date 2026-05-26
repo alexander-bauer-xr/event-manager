@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Icon, LatLngExpression } from 'leaflet';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 import 'leaflet/dist/leaflet.css';
 
@@ -32,6 +33,7 @@ function MapUpdater({ center }: { center: LatLngExpression }) {
 }
 
 export function MapPanel() {
+  const { t } = useTranslation();
   const locations = useStore((s) => s.locations);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -45,7 +47,7 @@ export function MapPanel() {
 
   const handleLocateMe = () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
+      toast.error(t('map.geoNotSupported'));
       return;
     }
 
@@ -56,12 +58,12 @@ export function MapPanel() {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
-        toast.success('Location updated!');
+        toast.success(t('map.locationUpdated'));
         setLocating(false);
       },
       (error) => {
         console.error('Error getting location:', error);
-        toast.error('Could not get your location. Please check permissions.');
+        toast.error(t('map.locationError'));
         setLocating(false);
       }
     );
@@ -74,9 +76,9 @@ export function MapPanel() {
   if (validLocations.length === 0 && !userLocation) {
     return (
       <div className="empty-state">
-        <p>No locations with coordinates yet</p>
+        <p>{t('map.empty')}</p>
         <button onClick={handleLocateMe} disabled={locating} className="locate-btn">
-          {locating ? 'Locating...' : 'Show my location'}
+          {locating ? t('map.locating') : t('map.showMyLocation')}
         </button>
       </div>
     );
@@ -88,7 +90,7 @@ export function MapPanel() {
     <div className="map-panel">
       <div className="map-controls">
         <button onClick={handleLocateMe} disabled={locating} className="locate-btn">
-          {locating ? 'Locating...' : userLocation ? 'Update my location' : 'Locate me'}
+          {locating ? t('map.locating') : userLocation ? t('map.updateMyLocation') : t('map.locateMe')}
         </button>
       </div>
       <MapContainer center={mapCenter} zoom={13} className="map-container">
@@ -114,7 +116,7 @@ export function MapPanel() {
                   rel="noopener noreferrer"
                   className="map-popup-link"
                 >
-                  Navigate here
+                  {t('map.navigateHere')}
                 </a>
               </div>
             </Popup>
@@ -124,7 +126,7 @@ export function MapPanel() {
           <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
             <Popup>
               <div className="map-popup">
-                <h3>You are here</h3>
+                <h3>{t('map.youAreHere')}</h3>
               </div>
             </Popup>
           </Marker>

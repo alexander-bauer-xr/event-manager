@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 import { AdminLoginForm } from '../components/admin/AdminLoginForm';
 import { AdminControls } from '../components/admin/AdminControls';
@@ -9,6 +10,7 @@ import { ChatPanel } from '../components/ChatPanel';
 
 export function AdminPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<'controls' | 'agenda' | 'locations' | 'chat'>('controls');
 
   const event = useStore((s) => s.event);
@@ -60,7 +62,7 @@ export function AdminPage() {
     return (
       <div className="page-loading">
         <div className="spinner"></div>
-        <p>Loading...</p>
+        <p>{t('admin.loading')}</p>
       </div>
     );
   }
@@ -68,10 +70,10 @@ export function AdminPage() {
   if (error && !event) {
     return (
       <div className="page-error">
-        <h2>Error</h2>
-        <p>{error}</p>
+        <h2>{t('admin.error')}</h2>
+        <p>{t(error as any)}</p>
         <Link to="/" className="btn btn-primary">
-          Back to Home
+          {t('admin.backToHome')}
         </Link>
       </div>
     );
@@ -81,9 +83,9 @@ export function AdminPage() {
     return (
       <div className="admin-page">
         <header className="admin-header">
-          <h1>Admin Access Required</h1>
+          <h1>{t('admin.accessRequired')}</h1>
           <Link to={`/e/${slug}`} className="btn-link">
-            ← Back to Event
+            ← {t('admin.backToEvent')}
           </Link>
         </header>
         <main className="admin-content">
@@ -97,11 +99,11 @@ export function AdminPage() {
     <div className="admin-page">
       <header className="admin-header">
         <div>
-          <h1>Admin Dashboard</h1>
+          <h1>{t('admin.dashboard')}</h1>
           {event && <p className="admin-event-title">{event.title}</p>}
         </div>
         <Link to={`/e/${slug}`} className="btn btn-secondary">
-          ← Back to Event
+          ← {t('admin.backToEvent')}
         </Link>
       </header>
 
@@ -110,25 +112,25 @@ export function AdminPage() {
           className={`admin-nav-btn ${activeSection === 'controls' ? 'active' : ''}`}
           onClick={() => setActiveSection('controls')}
         >
-          Controls
+          {t('admin.navControls')}
         </button>
         <button
           className={`admin-nav-btn ${activeSection === 'agenda' ? 'active' : ''}`}
           onClick={() => setActiveSection('agenda')}
         >
-          Agenda
+          {t('admin.navAgenda')}
         </button>
         <button
           className={`admin-nav-btn ${activeSection === 'locations' ? 'active' : ''}`}
           onClick={() => setActiveSection('locations')}
         >
-          Locations
+          {t('admin.navLocations')}
         </button>
         <button
           className={`admin-nav-btn ${activeSection === 'chat' ? 'active' : ''}`}
           onClick={() => setActiveSection('chat')}
         >
-          Admin Chat
+          {t('admin.navChat')}
         </button>
       </nav>
 

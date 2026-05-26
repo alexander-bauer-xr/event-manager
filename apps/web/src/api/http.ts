@@ -3,6 +3,7 @@ import {
   AdminLoginResponse,
   AgendaSlotDTO,
   LocationDTO,
+  EventDTO,
   EventStateDTO,
   AnnouncementDTO,
   PaginationOptions,
@@ -103,6 +104,20 @@ export async function adminAnnounce(slug: string, jwt: string, text: string): Pr
     },
     (data) => announcementSchema.parse(data)
   );
+}
+
+export async function updateEvent(
+  slug: string,
+  jwt: string,
+  data: { title?: string; startsAt?: string | null; endsAt?: string | null }
+): Promise<EventDTO> {
+  return fetchJson(`/api/admin/events/${slug}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: JSON.stringify(data),
+  });
 }
 
 export async function saveAgenda(

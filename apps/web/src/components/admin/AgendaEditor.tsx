@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 
 interface EditableSlot {
   title: string;
+  description: string;
   startTime: string;
   endTime: string;
   locationId: string;
@@ -12,6 +14,7 @@ interface EditableSlot {
 
 export function AgendaEditor() {
   const { slug } = useParams<{ slug: string }>();
+  const { t } = useTranslation();
   const agenda = useStore((s) => s.agenda);
   const locations = useStore((s) => s.locations);
   const saveAgendaAction = useStore((s) => s.saveAgendaAction);
@@ -37,6 +40,7 @@ export function AgendaEditor() {
       setSlots(
         agenda.map((slot) => ({
           title: slot.title,
+          description: slot.description || '',
           startTime: toDatetimeLocal(slot.startTime),
           endTime: toDatetimeLocal(slot.endTime),
           locationId: slot.locationId || '',
@@ -46,7 +50,7 @@ export function AgendaEditor() {
   }, [agenda, editing]);
 
   const handleAdd = () => {
-    setSlots([...slots, { title: '', startTime: '', endTime: '', locationId: '' }]);
+    setSlots([...slots, { title: '', description: '', startTime: '', endTime: '', locationId: '' }]);
     setEditing(true);
   };
 
@@ -80,13 +84,13 @@ export function AgendaEditor() {
 
   const validateSlot = (slot: EditableSlot): string | null => {
     if (!slot.title.trim()) {
-      return 'Title is required';
+      return t('agendaEditor.titleRequired');
     }
     if (slot.startTime && slot.endTime) {
       const start = new Date(slot.startTime);
       const end = new Date(slot.endTime);
       if (end <= start) {
-        return 'End time must be after start time';
+        return t('agendaEditor.endAfterStart');
       }
     }
     return null;
@@ -100,12 +104,13 @@ export function AgendaEditor() {
     const hasErrors = errors.some(error => error !== null);
 
     if (hasErrors) {
-      toast.error('Please fix validation errors before saving');
+      toast.error(t('agendaEditor.fixErrors'));
       return;
     }
 
     const slotsToSave = slots.map((slot) => ({
       title: slot.title,
+      description: slot.description || null,
       startTime: slot.startTime ? new Date(slot.startTime).toISOString() : null,
       endTime: slot.endTime ? new Date(slot.endTime).toISOString() : null,
       locationId: slot.locationId || null,
@@ -114,10 +119,10 @@ export function AgendaEditor() {
     try {
       await saveAgendaAction(slug, slotsToSave);
       setEditing(false);
-      toast.success('Agenda saved successfully!');
+      toast.success(t('agendaEditor.saveSuccess'));
     } catch (err) {
       console.error('Failed to save agenda:', err);
-      toast.error('Failed to save agenda. Please try again.');
+      toast.error(t('agendaEditor.saveError'));
     }
   };
 
@@ -125,6 +130,7 @@ export function AgendaEditor() {
     setSlots(
       agenda.map((slot) => ({
         title: slot.title,
+        description: slot.description || '',
         startTime: toDatetimeLocal(slot.startTime),
         endTime: toDatetimeLocal(slot.endTime),
         locationId: slot.locationId || '',
@@ -136,9 +142,9 @@ export function AgendaEditor() {
   return (
     <div className="agenda-editor">
       <div className="editor-header">
-        <h2>Agenda Editor</h2>
+        <h2>{t('agendaEditor.title')}</h2>
         <button onClick={handleAdd} className="btn btn-secondary">
-          Add Slot
+          {t('agendaEditor.addSlot')}
         </button>
       </div>
 
@@ -152,7 +158,7 @@ export function AgendaEditor() {
                   onClick={() => handleMoveUp(index)}
                   disabled={index === 0}
                   className="btn-icon"
-                  title="Move up"
+                  title={t('agendaEditor.moveUp')}
                 >
                   ↑
                 </button>
@@ -160,11 +166,11 @@ export function AgendaEditor() {
                   onClick={() => handleMoveDown(index)}
                   disabled={index === slots.length - 1}
                   className="btn-icon"
-                  title="Move down"
+                  title={t('agendaEditor.moveDown')}
                 >
                   ↓
                 </button>
-                <button onClick={() => handleRemove(index)} className="btn-icon btn-danger" title="Remove">
+                <button onClick={() => handleRemove(index)} className="btn-icon btn-danger" title={t('agendaEditor.remove')}>
                   ✕
                 </button>
               </div>
@@ -173,8 +179,15 @@ export function AgendaEditor() {
                   type="text"
                   value={slot.title}
                   onChange={(e) => handleChange(index, 'title', e.target.value)}
-                  placeholder="Title"
+                  placeholder={t('agendaEditor.titlePlaceholder')}
                   className={`form-input ${!slot.title.trim() ? 'input-error' : ''}`}
+                />
+                <textarea
+                  value={slot.description}
+                  onChange={(e) => handleChange(index, 'description', e.target.value)}
+                  placeholder={t('agendaEditor.descriptionPlaceholder')}
+                  className="form-input"
+                  rows={2}
                 />
                 <input
                   type="datetime-local"
@@ -193,7 +206,7 @@ export function AgendaEditor() {
                   onChange={(e) => handleChange(index, 'locationId', e.target.value)}
                   className="form-select"
                 >
-                  <option value="">No location</option>
+                  <option value="">{t('agendaEditor.noLocation')}</option>
                   {locations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
                       {loc.title}
@@ -212,10 +225,10 @@ export function AgendaEditor() {
       {editing && (
         <div className="editor-actions">
           <button onClick={handleSave} disabled={loading} className="btn btn-primary">
-            {loading ? 'Saving...' : 'Save Agenda'}
+            {loading ? t('agendaEditor.saving') : t('agendaEditor.saveAgenda')}
           </button>
           <button onClick={handleCancel} disabled={loading} className="btn btn-secondary">
-            Cancel
+            {t('agendaEditor.cancel')}
           </button>
         </div>
       )}
